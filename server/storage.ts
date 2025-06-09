@@ -93,11 +93,15 @@ export class MemStorage implements IStorage {
     this.agentSchedules = new Map();
     this.showingRequests = new Map();
     this.scheduledShowings = new Map();
+    this.feedbackSessions = new Map();
+    this.feedbackResponses = new Map();
     this.currentPropertyId = 1;
     this.currentLeadId = 1;
     this.currentScheduleId = 1;
     this.currentRequestId = 1;
     this.currentShowingId = 1;
+    this.currentFeedbackSessionId = 1;
+    this.currentFeedbackResponseId = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -430,6 +434,59 @@ export class MemStorage implements IStorage {
 
   async deleteScheduledShowing(id: number): Promise<boolean> {
     return this.scheduledShowings.delete(id);
+  }
+
+  // Feedback Sessions
+  async getFeedbackSessions(leadId?: number): Promise<FeedbackSession[]> {
+    const sessions = Array.from(this.feedbackSessions.values());
+    if (leadId) {
+      return sessions.filter(session => session.leadId === leadId);
+    }
+    return sessions;
+  }
+
+  async createFeedbackSession(insertSession: InsertFeedbackSession): Promise<FeedbackSession> {
+    const session: FeedbackSession = {
+      id: this.currentFeedbackSessionId++,
+      ...insertSession,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.feedbackSessions.set(session.id, session);
+    return session;
+  }
+
+  async updateFeedbackSession(id: number, updates: Partial<InsertFeedbackSession>): Promise<FeedbackSession | undefined> {
+    const session = this.feedbackSessions.get(id);
+    if (!session) return undefined;
+
+    const updatedSession: FeedbackSession = {
+      ...session,
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.feedbackSessions.set(id, updatedSession);
+    return updatedSession;
+  }
+
+  async getFeedbackSession(id: number): Promise<FeedbackSession | undefined> {
+    return this.feedbackSessions.get(id);
+  }
+
+  // Feedback Responses
+  async getFeedbackResponses(sessionId: number): Promise<FeedbackResponse[]> {
+    const responses = Array.from(this.feedbackResponses.values());
+    return responses.filter(response => response.sessionId === sessionId);
+  }
+
+  async createFeedbackResponse(insertResponse: InsertFeedbackResponse): Promise<FeedbackResponse> {
+    const response: FeedbackResponse = {
+      id: this.currentFeedbackResponseId++,
+      ...insertResponse,
+      createdAt: new Date()
+    };
+    this.feedbackResponses.set(response.id, response);
+    return response;
   }
 }
 
