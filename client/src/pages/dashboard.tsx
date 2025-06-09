@@ -65,20 +65,20 @@ export default function Dashboard() {
           <CardContent>
             <div className="flex flex-wrap gap-4">
               <Link href="/import">
-                <Button className="bg-primary hover:bg-primary/90">
+                <Button className="bg-primary hover:bg-blue-600">
                   <Upload className="h-4 w-4 mr-2" />
                   Import Properties
                 </Button>
               </Link>
               <Button 
-                className="bg-secondary hover:bg-secondary/90"
+                className="bg-secondary hover:bg-green-600"
                 onClick={() => handleQuickAction("addLead")}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add New Lead
               </Button>
               <Button 
-                className="bg-accent hover:bg-accent/90"
+                className="bg-accent hover:bg-orange-600"
                 onClick={() => handleQuickAction("assign")}
               >
                 <RotateCw className="h-4 w-4 mr-2" />

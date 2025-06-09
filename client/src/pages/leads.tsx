@@ -79,7 +79,7 @@ export default function Leads() {
             </Button>
           </div>
           
-          <Button className="bg-secondary hover:bg-secondary/90">
+          <Button className="bg-secondary hover:bg-green-600">
             <Plus className="h-4 w-4 mr-2" />
             Add Lead
           </Button>

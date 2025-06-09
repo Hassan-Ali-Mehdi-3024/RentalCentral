@@ -107,7 +107,7 @@
   }
   
   .sidebar-nav-item.active {
-    @apply bg-primary/10 text-primary;
+    @apply bg-blue-50 text-primary;
   }
   
   .sidebar-nav-item:not(.active) {

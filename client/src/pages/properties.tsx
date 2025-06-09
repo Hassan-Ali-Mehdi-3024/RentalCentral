@@ -85,7 +85,7 @@ export default function Properties() {
             </Button>
           </div>
           
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-primary hover:bg-blue-600">
             <Plus className="h-4 w-4 mr-2" />
             Add Property
           </Button>

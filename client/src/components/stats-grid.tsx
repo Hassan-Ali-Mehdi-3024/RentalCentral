@@ -12,10 +12,10 @@ const statIcons = {
 };
 
 const statColors = {
-  totalProperties: "bg-primary/10 text-primary",
-  activeLeads: "bg-secondary/10 text-secondary",
-  conversionRate: "bg-accent/10 text-accent",
-  monthlyRevenue: "bg-secondary/10 text-secondary",
+  totalProperties: "bg-blue-50 text-primary",
+  activeLeads: "bg-green-50 text-secondary",
+  conversionRate: "bg-orange-50 text-accent",
+  monthlyRevenue: "bg-green-50 text-secondary",
 };
 
 export function StatsGrid() {

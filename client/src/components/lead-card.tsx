@@ -23,7 +23,7 @@ export function LeadCard({ lead }: LeadCardProps) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
             <div>

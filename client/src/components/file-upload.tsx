@@ -125,7 +125,7 @@ export function FileUpload() {
           <Button 
             type="button"
             disabled={uploadMutation.isPending}
-            className="bg-primary hover:bg-primary/90"
+            className="bg-primary hover:bg-blue-600"
           >
             {uploadMutation.isPending ? "Uploading..." : "Choose Files"}
           </Button>
