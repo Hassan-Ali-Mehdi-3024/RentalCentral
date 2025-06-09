@@ -513,7 +513,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (aiResult.isComplete) {
         sessionUpdates.status = "completed";
-        sessionUpdates.completedAt = new Date().toISOString() as any;
       }
 
       await storage.updateFeedbackSession(sessionId, sessionUpdates);

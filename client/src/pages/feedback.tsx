@@ -226,8 +226,8 @@ export default function Feedback() {
                 <PostTourScheduler
                   leadId={selectedLeadId}
                   propertyId={selectedPropertyId}
-                  leadEmail={leads.find(l => l.id === selectedLeadId)?.email}
-                  leadPhone={leads.find(l => l.id === selectedLeadId)?.phone}
+                  leadEmail={leads.find(l => l.id === selectedLeadId)?.email || undefined}
+                  leadPhone={leads.find(l => l.id === selectedLeadId)?.phone ?? undefined}
                   onScheduled={() => {
                     setSelectedLeadId(undefined);
                     setSelectedPropertyId(undefined);

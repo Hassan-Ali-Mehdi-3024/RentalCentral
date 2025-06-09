@@ -18,6 +18,9 @@ export const api = {
     getAll: (): Promise<Property[]> => 
       fetch("/api/properties", { credentials: "include" }).then(res => res.json()),
     
+    get: (id: number): Promise<Property> =>
+      fetch(`/api/properties/${id}`, { credentials: "include" }).then(res => res.json()),
+    
     getById: (id: number): Promise<Property> =>
       fetch(`/api/properties/${id}`, { credentials: "include" }).then(res => res.json()),
     
@@ -47,6 +50,9 @@ export const api = {
       const url = propertyId ? `/api/leads?propertyId=${propertyId}` : "/api/leads";
       return fetch(url, { credentials: "include" }).then(res => res.json());
     },
+    
+    get: (id: number): Promise<Lead> =>
+      fetch(`/api/leads/${id}`, { credentials: "include" }).then(res => res.json()),
     
     getById: (id: number): Promise<Lead> =>
       fetch(`/api/leads/${id}`, { credentials: "include" }).then(res => res.json()),
