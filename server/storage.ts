@@ -93,11 +93,17 @@ export class MemStorage implements IStorage {
     this.agentSchedules = new Map();
     this.showingRequests = new Map();
     this.scheduledShowings = new Map();
+    this.feedbackSessions = new Map();
+    this.feedbackResponses = new Map();
+    this.leadInteractions = new Map();
     this.currentPropertyId = 1;
     this.currentLeadId = 1;
     this.currentScheduleId = 1;
     this.currentRequestId = 1;
     this.currentShowingId = 1;
+    this.currentFeedbackSessionId = 1;
+    this.currentFeedbackResponseId = 1;
+    this.currentInteractionId = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -430,6 +436,66 @@ export class MemStorage implements IStorage {
 
   async deleteScheduledShowing(id: number): Promise<boolean> {
     return this.scheduledShowings.delete(id);
+  }
+
+  // Feedback Sessions
+  async getFeedbackSessions(leadId?: number): Promise<any[]> {
+    const sessions = Array.from(this.feedbackSessions.values());
+    return leadId ? sessions.filter(session => session.leadId === leadId) : sessions;
+  }
+
+  async createFeedbackSession(insertSession: any): Promise<any> {
+    const session: any = { 
+      id: this.currentFeedbackSessionId++, 
+      ...insertSession,
+      createdAt: new Date().toISOString()
+    };
+    this.feedbackSessions.set(session.id, session);
+    return session;
+  }
+
+  async updateFeedbackSession(id: number, updates: any): Promise<any> {
+    const session = this.feedbackSessions.get(id);
+    if (session) {
+      const updatedSession = { ...session, ...updates };
+      this.feedbackSessions.set(id, updatedSession);
+      return updatedSession;
+    }
+    return undefined;
+  }
+
+  async getFeedbackSession(id: number): Promise<any> {
+    return this.feedbackSessions.get(id);
+  }
+
+  // Feedback Responses
+  async getFeedbackResponses(sessionId: number): Promise<any[]> {
+    return Array.from(this.feedbackResponses.values()).filter(response => response.sessionId === sessionId);
+  }
+
+  async createFeedbackResponse(insertResponse: any): Promise<any> {
+    const response: any = { 
+      id: this.currentFeedbackResponseId++, 
+      ...insertResponse,
+      createdAt: new Date().toISOString()
+    };
+    this.feedbackResponses.set(response.id, response);
+    return response;
+  }
+
+  // Lead Interactions
+  async getLeadInteractions(leadId: number): Promise<any[]> {
+    return Array.from(this.leadInteractions.values()).filter(interaction => interaction.leadId === leadId);
+  }
+
+  async createLeadInteraction(insertInteraction: any): Promise<any> {
+    const interaction: any = { 
+      id: this.currentInteractionId++, 
+      ...insertInteraction,
+      createdAt: new Date().toISOString()
+    };
+    this.leadInteractions.set(interaction.id, interaction);
+    return interaction;
   }
 }
 
