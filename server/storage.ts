@@ -459,7 +459,13 @@ export class MemStorage implements IStorage {
   async createFeedbackSession(insertSession: InsertFeedbackSession): Promise<FeedbackSession> {
     const session: FeedbackSession = {
       id: this.currentFeedbackSessionId++,
-      ...insertSession,
+      leadId: insertSession.leadId,
+      propertyId: insertSession.propertyId || null,
+      sessionType: insertSession.sessionType,
+      status: insertSession.status || 'active',
+      preferredResponseMethod: insertSession.preferredResponseMethod || null,
+      currentQuestionIndex: insertSession.currentQuestionIndex || 0,
+      sessionData: insertSession.sessionData || null,
       createdAt: new Date(),
       updatedAt: new Date()
     };

@@ -1,14 +1,14 @@
-import { useState, useRef } from "react";
-import { MessageSquare, Mic, MicOff, Smile, ChevronDown, Send, Calendar, DollarSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Mic, Type, ChevronDown, Smile, Send, SkipForward } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Lead, Property, FeedbackSession } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface FeedbackQuestionnaireProps {
   leadId: number;
@@ -25,255 +25,334 @@ interface QuestionData {
 }
 
 export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onComplete }: FeedbackQuestionnaireProps) {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [responses, setResponses] = useState<string[]>([]);
   const [currentResponse, setCurrentResponse] = useState("");
   const [responseMethod, setResponseMethod] = useState<'text' | 'voice' | 'dropdown' | 'emoji'>('text');
-  const [isRecording, setIsRecording] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<QuestionData | null>(null);
+  const [isListening, setIsListening] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [questions, setQuestions] = useState<QuestionData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [preferredMethod, setPreferredMethod] = useState<string | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: lead } = useQuery({
-    queryKey: ["/api/leads", leadId],
-    queryFn: () => api.leads.getById(leadId),
-  });
-
-  const { data: property } = useQuery({
-    queryKey: ["/api/properties", propertyId],
-    queryFn: () => propertyId ? api.properties.getById(propertyId) : Promise.resolve(null),
-    enabled: !!propertyId
-  });
-
-  const { data: session } = useQuery({
-    queryKey: ["/api/feedback-sessions", sessionId],
-    queryFn: () => sessionId ? api.feedback.getSession(sessionId) : Promise.resolve(null),
-    enabled: !!sessionId
-  });
-
-  const startSessionMutation = useMutation({
-    mutationFn: () => api.feedback.createSession({
-      leadId,
-      propertyId: propertyId || null,
-      sessionType,
-      status: "active",
-      preferredResponseMethod: responseMethod,
-      currentQuestionIndex: 0,
-      sessionData: JSON.stringify({ responses: [] })
-    }),
-    onSuccess: (newSession) => {
-      setSessionId(newSession.id);
-      generateNextQuestion(newSession.id, []);
+  // Discovery questions for new leads
+  const discoveryQuestions: QuestionData[] = [
+    {
+      text: "What type of property are you looking for?",
+      type: 'preference',
+      responseOptions: ["Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House", "Condo"],
+      emojiOptions: ["🏠", "🏢", "🏡", "🏘️"]
+    },
+    {
+      text: "When are you hoping to move in?",
+      type: 'timeline',
+      responseOptions: ["Immediately", "Within 1 month", "Within 2-3 months", "3+ months", "Flexible"],
+      emojiOptions: ["🚀", "📅", "⏰", "🔄"]
+    },
+    {
+      text: "What's your budget range for monthly rent?",
+      type: 'pricing',
+      responseOptions: ["Under $1,500", "$1,500-$2,500", "$2,500-$3,500", "$3,500+", "Flexible"],
+      emojiOptions: ["💵", "💰", "💳", "🏦"]
+    },
+    {
+      text: "What amenities are most important to you?",
+      type: 'preference',
+      responseOptions: ["Parking", "Pet-friendly", "Gym/Fitness", "Pool", "In-unit laundry", "Balcony/Patio"],
+      emojiOptions: ["🅿️", "🐕", "🏋️", "🏊", "🧺", "🌿"]
+    },
+    {
+      text: "How interested are you in scheduling a tour?",
+      type: 'interest',
+      responseOptions: ["Very interested", "Somewhat interested", "Maybe later", "Not interested"],
+      emojiOptions: ["😍", "🙂", "🤔", "😐"]
     }
-  });
+  ];
 
-  const submitResponseMutation = useMutation({
-    mutationFn: (data: { sessionId: number; response: string; questionText: string }) =>
-      api.feedback.submitResponse({
-        sessionId: data.sessionId,
-        questionText: data.questionText,
-        responseText: data.response,
-        responseMethod,
-        aiGeneratedQuestion: true,
-        metadata: JSON.stringify({ timestamp: new Date().toISOString() })
-      }),
-    onSuccess: () => {
-      if (sessionId && currentQuestion) {
-        generateNextQuestion(sessionId, [
-          { question: currentQuestion.text, response: currentResponse, method: responseMethod }
-        ]);
-      }
-      setCurrentResponse("");
+  // Post-tour questions with AI-powered follow-ups
+  const postTourQuestions: QuestionData[] = [
+    {
+      text: "How would you rate your overall tour experience?",
+      type: 'interest',
+      responseOptions: ["Excellent", "Good", "Fair", "Poor"],
+      emojiOptions: ["😍", "😊", "😐", "😞"]
+    },
+    {
+      text: "What did you like most about the property?",
+      type: 'preference',
+      emojiOptions: ["✨", "🏠", "🌟", "👍"]
+    },
+    {
+      text: "Is there anything that concerns you about this property?",
+      type: 'open',
+      emojiOptions: ["🤔", "😟", "❓", "💭"]
+    },
+    {
+      text: "Based on what you saw, what rent would you consider fair for this unit?",
+      type: 'pricing',
+      responseOptions: ["As listed", "10% less", "15% less", "20% less", "Would need significant reduction"],
+      emojiOptions: ["💰", "💵", "💳", "🤷"]
+    },
+    {
+      text: "If you were to move forward, when would be your ideal move-in date?",
+      type: 'timeline',
+      responseOptions: ["Immediately", "Within 2 weeks", "Within 1 month", "1-2 months", "Not ready to commit"],
+      emojiOptions: ["🚀", "📅", "⏰", "🤷"]
     }
-  });
+  ];
 
-  const generateQuestionMutation = useMutation({
-    mutationFn: (data: { sessionId: number; context: any[] }) =>
-      api.feedback.generateQuestion(data.sessionId, data.context),
-    onSuccess: (questionData) => {
-      if (questionData.completed) {
-        setIsCompleted(true);
-        if (onComplete) onComplete();
-        return;
-      }
-      setCurrentQuestion(questionData.question);
+  // Generate AI follow-up questions based on responses
+  const generateFollowUpQuestions = (responses: string[]): QuestionData[] => {
+    const followUps: QuestionData[] = [];
+    
+    // Check if interest level is unclear and pricing wasn't mentioned
+    const hasUnclearInterest = responses.some(r => 
+      r.toLowerCase().includes('maybe') || 
+      r.toLowerCase().includes('not sure') ||
+      r.toLowerCase().includes('somewhat') ||
+      r.toLowerCase().includes('think about')
+    );
+    
+    const hasPricingInfo = responses.some(r => 
+      r.toLowerCase().includes('$') || 
+      r.toLowerCase().includes('price') || 
+      r.toLowerCase().includes('rent') ||
+      r.toLowerCase().includes('budget')
+    );
+
+    // Always ask pricing question if interest is unclear and no pricing mentioned
+    if (hasUnclearInterest && !hasPricingInfo) {
+      followUps.push({
+        text: "What monthly rent amount would make you more interested in this property?",
+        type: 'pricing',
+        responseOptions: ["$100 less", "$200 less", "$300+ less", "Price isn't the main issue"],
+        emojiOptions: ["💰", "💵", "💳", "🤷"]
+      });
     }
-  });
 
-  const generateNextQuestion = (sessionId: number, previousResponses: any[]) => {
-    generateQuestionMutation.mutate({ sessionId, context: previousResponses });
+    // Ask about move-in timeline if not clearly stated
+    const hasTimelineInfo = responses.some(r => 
+      r.toLowerCase().includes('month') || 
+      r.toLowerCase().includes('week') ||
+      r.toLowerCase().includes('immediately') ||
+      r.toLowerCase().includes('date')
+    );
+
+    if (!hasTimelineInfo) {
+      followUps.push({
+        text: "When would you realistically be able to move in?",
+        type: 'timeline',
+        responseOptions: ["This month", "Next month", "2-3 months", "More than 3 months", "Very flexible"],
+        emojiOptions: ["🚀", "📅", "⏰", "🔄"]
+      });
+    }
+
+    return followUps;
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        // In a real implementation, you'd send this to a speech-to-text service
-        // For demo, we'll use browser's speech recognition
-      };
-
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-        const recognition = new SpeechRecognition();
+  // Initialize session and questions
+  useEffect(() => {
+    const initializeSession = async () => {
+      setIsLoading(true);
+      try {
+        // Create new feedback session
+        const session = await api.feedback.createSession({
+          leadId,
+          propertyId: propertyId || null,
+          sessionType,
+          status: 'active',
+          preferredResponseMethod: null,
+          currentQuestionIndex: 0,
+          sessionData: JSON.stringify({ responses: [] })
+        });
         
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
+        setSessionId(session.id);
+        
+        // Set initial questions based on session type
+        const initialQuestions = sessionType === 'discovery' ? discoveryQuestions : postTourQuestions;
+        setQuestions(initialQuestions);
+      } catch (error) {
+        console.error('Error initializing session:', error);
+        toast({
+          title: "Error",
+          description: "Failed to start feedback session.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setCurrentResponse(transcript);
-          setIsRecording(false);
-        };
+    initializeSession();
+  }, [leadId, propertyId, sessionType]);
 
-        recognition.onerror = () => {
-          toast({
-            title: "Speech Recognition Error",
-            description: "Please try typing your response instead.",
-            variant: "destructive",
-          });
-          setIsRecording(false);
-        };
+  const createResponseMutation = useMutation({
+    mutationFn: api.feedback.submitResponse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/feedback'] });
+    }
+  });
 
-        recognition.start();
-        setIsRecording(true);
+  const updateSessionMutation = useMutation({
+    mutationFn: ({ sessionId, updates }: { sessionId: number; updates: any }) =>
+      api.feedback.updateSession(sessionId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/feedback'] });
+    }
+  });
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+
+  // Voice recognition setup
+  const startVoiceRecognition = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast({
+        title: "Voice not supported",
+        description: "Voice recognition is not supported in this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setCurrentResponse(transcript);
+      setIsListening(false);
+      
+      // Set preferred method to voice after first use
+      if (!preferredMethod) {
+        setPreferredMethod('voice');
+        setResponseMethod('voice');
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      toast({
+        title: "Voice recognition error",
+        description: "Please try again or use text input.",
+        variant: "destructive",
+      });
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const handleResponseMethodChange = (method: 'text' | 'voice' | 'dropdown' | 'emoji') => {
+    setResponseMethod(method);
+    if (!preferredMethod) {
+      setPreferredMethod(method);
+    }
+  };
+
+  const submitResponse = async () => {
+    if (!currentResponse.trim() || !sessionId) return;
+
+    try {
+      // Save response
+      await createResponseMutation.mutateAsync({
+        sessionId,
+        questionText: currentQuestion.text,
+        responseText: currentResponse,
+        responseMethod,
+        questionIndex: currentQuestionIndex
+      });
+
+      const newResponses = [...responses, currentResponse];
+      setResponses(newResponses);
+
+      // Check if we're at the minimum question count and need follow-ups
+      const isAtMinimumQuestions = newResponses.length >= 5;
+      const isLastQuestion = currentQuestionIndex === questions.length - 1;
+
+      if (isLastQuestion && isAtMinimumQuestions) {
+        // Generate follow-up questions if needed
+        const followUps = generateFollowUpQuestions(newResponses);
+        if (followUps.length > 0) {
+          setQuestions([...questions, ...followUps]);
+        }
       }
 
-      stream.getTracks().forEach(track => track.stop());
+      // Move to next question or complete
+      if (currentQuestionIndex < questions.length - 1 || (isLastQuestion && isAtMinimumQuestions)) {
+        const nextIndex = currentQuestionIndex + 1;
+        setCurrentQuestionIndex(nextIndex);
+        setCurrentResponse("");
+        
+        // Update session progress
+        await updateSessionMutation.mutateAsync({
+          sessionId,
+          updates: {
+            currentQuestionIndex: nextIndex,
+            preferredResponseMethod: preferredMethod || responseMethod,
+            sessionData: JSON.stringify({ responses: newResponses })
+          }
+        });
+
+        // Adapt response method based on preference
+        if (preferredMethod && preferredMethod !== 'text') {
+          setResponseMethod(preferredMethod as 'text' | 'voice' | 'dropdown' | 'emoji');
+        }
+      } else {
+        // Complete session
+        await updateSessionMutation.mutateAsync({
+          sessionId,
+          updates: {
+            status: 'completed',
+            sessionData: JSON.stringify({ responses: newResponses, completedAt: new Date().toISOString() })
+          }
+        });
+
+        toast({
+          title: "Feedback completed",
+          description: "Thank you for your responses! We'll follow up with you soon.",
+        });
+
+        onComplete?.();
+      }
     } catch (error) {
+      console.error('Error submitting response:', error);
       toast({
-        title: "Microphone Access Denied",
-        description: "Please allow microphone access to use voice responses.",
+        title: "Error",
+        description: "Failed to submit response. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleSubmitResponse = () => {
-    if (!currentResponse.trim() || !sessionId || !currentQuestion) {
-      return;
-    }
-
-    submitResponseMutation.mutate({
-      sessionId,
-      response: currentResponse.trim(),
-      questionText: currentQuestion.text
-    });
+  const handleEmojiClick = (emoji: string) => {
+    setCurrentResponse(emoji);
   };
 
-  const startFeedbackSession = () => {
-    startSessionMutation.mutate();
+  const handleDropdownChange = (value: string) => {
+    setCurrentResponse(value);
   };
 
-  const emojiOptions = ['😍', '😊', '😐', '😕', '😞', '👍', '👎', '❤️', '⭐', '💰'];
-
-  if (isCompleted) {
+  if (isLoading) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto">
         <CardContent className="p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MessageSquare className="h-8 w-8 text-green-600" />
-          </div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            Thank you for your feedback!
-          </h3>
-          <p className="text-muted-foreground">
-            We appreciate you taking the time to share your thoughts. 
-            {sessionType === 'discovery' ? 
-              " We'll be in touch soon to schedule your tour." : 
-              " Your feedback helps us improve our service."
-            }
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!sessionId) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <MessageSquare className="h-5 w-5 mr-2" />
-            {sessionType === 'discovery' ? 'Property Discovery' : 'Tour Feedback'}
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            {sessionType === 'discovery' 
-              ? `Hi ${lead?.name}! Let's find out what you're looking for in your next home.`
-              : `Hi ${lead?.name}! We'd love to hear about your tour experience.`
-            }
-          </p>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {property && (
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <img 
-                  src={property.imageUrl || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=100"} 
-                  alt={property.name}
-                  className="w-16 h-12 object-cover rounded"
-                />
-                <div>
-                  <h4 className="font-semibold text-foreground">{property.name}</h4>
-                  <p className="text-sm text-muted-foreground">{property.address}</p>
-                  <p className="text-sm text-primary font-medium">${property.rent}/mo</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-3 block">
-              How would you prefer to respond?
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Button
-                variant={responseMethod === 'text' ? 'default' : 'outline'}
-                onClick={() => setResponseMethod('text')}
-                className="flex flex-col items-center p-4 h-auto"
-              >
-                <MessageSquare className="h-5 w-5 mb-1" />
-                <span className="text-xs">Type</span>
-              </Button>
-              <Button
-                variant={responseMethod === 'voice' ? 'default' : 'outline'}
-                onClick={() => setResponseMethod('voice')}
-                className="flex flex-col items-center p-4 h-auto"
-              >
-                <Mic className="h-5 w-5 mb-1" />
-                <span className="text-xs">Voice</span>
-              </Button>
-              <Button
-                variant={responseMethod === 'dropdown' ? 'default' : 'outline'}
-                onClick={() => setResponseMethod('dropdown')}
-                className="flex flex-col items-center p-4 h-auto"
-              >
-                <ChevronDown className="h-5 w-5 mb-1" />
-                <span className="text-xs">Options</span>
-              </Button>
-              <Button
-                variant={responseMethod === 'emoji' ? 'default' : 'outline'}
-                onClick={() => setResponseMethod('emoji')}
-                className="flex flex-col items-center p-4 h-auto"
-              >
-                <Smile className="h-5 w-5 mb-1" />
-                <span className="text-xs">Emojis</span>
-              </Button>
-            </div>
-          </div>
-
-          <Button
-            onClick={startFeedbackSession}
-            disabled={startSessionMutation.isPending}
-            className="w-full bg-primary hover:bg-blue-600"
-          >
-            {startSessionMutation.isPending ? "Starting..." : "Start Questionnaire"}
-          </Button>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Preparing your questions...</p>
         </CardContent>
       </Card>
     );
@@ -281,123 +360,177 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
 
   if (!currentQuestion) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto">
         <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Generating your next question...</p>
+          <p>Session completed. Thank you for your feedback!</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center">
-            <MessageSquare className="h-5 w-5 mr-2" />
-            Question {session?.currentQuestionIndex ? session.currentQuestionIndex + 1 : 1}
-          </div>
-          {currentQuestion.type === 'pricing' && <DollarSign className="h-5 w-5 text-green-600" />}
-          {currentQuestion.type === 'timeline' && <Calendar className="h-5 w-5 text-blue-600" />}
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent className="space-y-6">
-        <div className="p-4 bg-muted rounded-lg">
-          <p className="text-foreground font-medium">{currentQuestion.text}</p>
+        <div className="flex items-center justify-between">
+          <CardTitle>
+            {sessionType === 'discovery' ? 'Discovery Questions' : 'Post-Tour Survey'}
+          </CardTitle>
+          <Badge variant="outline">
+            Question {currentQuestionIndex + 1} of {questions.length}
+          </Badge>
         </div>
+        <Progress value={progress} className="mt-2" />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium mb-4">{currentQuestion.text}</h3>
+          
+          {/* Response Method Selector */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant={responseMethod === 'text' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleResponseMethodChange('text')}
+            >
+              <Type className="h-4 w-4 mr-1" />
+              Type
+            </Button>
+            <Button
+              variant={responseMethod === 'voice' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleResponseMethodChange('voice')}
+            >
+              <Mic className="h-4 w-4 mr-1" />
+              Voice
+            </Button>
+            {currentQuestion.responseOptions && (
+              <Button
+                variant={responseMethod === 'dropdown' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleResponseMethodChange('dropdown')}
+              >
+                <ChevronDown className="h-4 w-4 mr-1" />
+                Select
+              </Button>
+            )}
+            {currentQuestion.emojiOptions && (
+              <Button
+                variant={responseMethod === 'emoji' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleResponseMethodChange('emoji')}
+              >
+                <Smile className="h-4 w-4 mr-1" />
+                Emoji
+              </Button>
+            )}
+          </div>
 
-        {responseMethod === 'text' && (
-          <div>
+          {/* Response Input */}
+          {responseMethod === 'text' && (
             <Textarea
               value={currentResponse}
               onChange={(e) => setCurrentResponse(e.target.value)}
               placeholder="Type your response here..."
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              rows={4}
+              className="min-h-[100px]"
             />
-          </div>
-        )}
+          )}
 
-        {responseMethod === 'voice' && (
-          <div className="text-center space-y-4">
-            <Button
-              onClick={isRecording ? () => setIsRecording(false) : startRecording}
-              className={`${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-600'} px-8 py-4`}
-              disabled={submitResponseMutation.isPending}
-            >
-              {isRecording ? (
-                <>
-                  <MicOff className="h-5 w-5 mr-2" />
-                  Stop Recording
-                </>
-              ) : (
-                <>
-                  <Mic className="h-5 w-5 mr-2" />
-                  Start Recording
-                </>
-              )}
-            </Button>
-            {currentResponse && (
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Your response:</p>
-                <p className="text-foreground">{currentResponse}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {responseMethod === 'dropdown' && currentQuestion.responseOptions && (
-          <Select value={currentResponse} onValueChange={setCurrentResponse}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select your response" />
-            </SelectTrigger>
-            <SelectContent>
-              {currentQuestion.responseOptions.map((option, index) => (
-                <SelectItem key={index} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        {responseMethod === 'emoji' && (
-          <div className="grid grid-cols-5 gap-3">
-            {emojiOptions.map((emoji, index) => (
+          {responseMethod === 'voice' && (
+            <div className="text-center p-8 border-2 border-dashed border-gray-200 rounded-lg">
               <Button
-                key={index}
-                variant={currentResponse === emoji ? 'default' : 'outline'}
-                onClick={() => setCurrentResponse(emoji)}
-                className="text-2xl p-4 h-auto"
+                onClick={startVoiceRecognition}
+                disabled={isListening}
+                className={isListening ? 'animate-pulse' : ''}
               >
-                {emoji}
+                <Mic className="h-5 w-5 mr-2" />
+                {isListening ? 'Listening...' : 'Click to speak'}
               </Button>
-            ))}
-          </div>
-        )}
+              {currentResponse && (
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground">You said:</p>
+                  <p className="font-medium">{currentResponse}</p>
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Always show text input as backup */}
-        {responseMethod !== 'text' && (
-          <div>
-            <Input
-              value={currentResponse}
-              onChange={(e) => setCurrentResponse(e.target.value)}
-              placeholder="Or type your response here..."
-              className="w-full"
-            />
-          </div>
-        )}
+          {responseMethod === 'dropdown' && currentQuestion.responseOptions && (
+            <Select value={currentResponse} onValueChange={handleDropdownChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select an option" />
+              </SelectTrigger>
+              <SelectContent>
+                {currentQuestion.responseOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-        <Button
-          onClick={handleSubmitResponse}
-          disabled={!currentResponse.trim() || submitResponseMutation.isPending}
-          className="w-full bg-primary hover:bg-blue-600"
-        >
-          <Send className="h-4 w-4 mr-2" />
-          {submitResponseMutation.isPending ? "Submitting..." : "Submit Response"}
-        </Button>
+          {responseMethod === 'emoji' && currentQuestion.emojiOptions && (
+            <div className="grid grid-cols-4 gap-4">
+              {currentQuestion.emojiOptions.map((emoji, index) => (
+                <Button
+                  key={emoji}
+                  variant={currentResponse === emoji ? 'default' : 'outline'}
+                  className="text-2xl h-16"
+                  onClick={() => handleEmojiClick(emoji)}
+                >
+                  {emoji}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {/* Text input always available */}
+          {responseMethod !== 'text' && (
+            <div className="mt-4">
+              <Textarea
+                value={currentResponse}
+                onChange={(e) => setCurrentResponse(e.target.value)}
+                placeholder="Or type your response here..."
+                className="min-h-[60px]"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-between">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (currentQuestionIndex > 0) {
+                setCurrentQuestionIndex(currentQuestionIndex - 1);
+                setCurrentResponse(responses[currentQuestionIndex - 1] || "");
+              }
+            }}
+            disabled={currentQuestionIndex === 0}
+          >
+            Previous
+          </Button>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCurrentResponse("Skipped");
+                submitResponse();
+              }}
+            >
+              <SkipForward className="h-4 w-4 mr-1" />
+              Skip
+            </Button>
+            <Button
+              onClick={submitResponse}
+              disabled={!currentResponse.trim() || createResponseMutation.isPending}
+            >
+              <Send className="h-4 w-4 mr-1" />
+              {currentQuestionIndex === questions.length - 1 ? 'Complete' : 'Next'}
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

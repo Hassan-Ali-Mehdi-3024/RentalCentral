@@ -9,7 +9,11 @@ import type {
   ShowingRequest,
   InsertShowingRequest,
   ScheduledShowing,
-  InsertScheduledShowing
+  InsertScheduledShowing,
+  FeedbackSession,
+  InsertFeedbackSession,
+  FeedbackResponse,
+  InsertFeedbackResponse
 } from "@shared/schema";
 
 export const api = {
@@ -123,18 +127,17 @@ export const api = {
     createSession: (session: InsertFeedbackSession): Promise<FeedbackSession> =>
       apiRequest("POST", "/api/feedback/sessions", session).then(res => res.json()),
       
+    updateSession: (id: number, updates: Partial<InsertFeedbackSession>): Promise<FeedbackSession> =>
+      apiRequest("PATCH", `/api/feedback/sessions/${id}`, updates).then(res => res.json()),
+      
     getSession: (id: number): Promise<FeedbackSession> =>
       fetch(`/api/feedback/sessions/${id}`, { credentials: "include" }).then(res => res.json()),
       
     submitResponse: (response: InsertFeedbackResponse): Promise<FeedbackResponse> =>
       apiRequest("POST", "/api/feedback/responses", response).then(res => res.json()),
       
-    generateQuestion: (sessionId: number, context: any[]): Promise<{
-      question?: any;
-      completed: boolean;
-      message: string;
-    }> =>
-      apiRequest("POST", "/api/feedback/generate-question", { sessionId, context }).then(res => res.json())
+    generateQuestions: (context: any): Promise<{ questions: any[] }> =>
+      apiRequest("POST", "/api/feedback/generate-questions", context).then(res => res.json())
   },
 
   // Performance Analytics API
