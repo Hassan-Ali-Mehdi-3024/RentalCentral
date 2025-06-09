@@ -53,20 +53,6 @@ export interface IStorage {
   createScheduledShowing(showing: InsertScheduledShowing): Promise<ScheduledShowing>;
   updateScheduledShowing(id: number, updates: Partial<InsertScheduledShowing>): Promise<ScheduledShowing | undefined>;
   deleteScheduledShowing(id: number): Promise<boolean>;
-  
-  // Feedback Sessions
-  getFeedbackSessions(leadId?: number): Promise<FeedbackSession[]>;
-  createFeedbackSession(session: InsertFeedbackSession): Promise<FeedbackSession>;
-  updateFeedbackSession(id: number, updates: Partial<InsertFeedbackSession>): Promise<FeedbackSession | undefined>;
-  getFeedbackSession(id: number): Promise<FeedbackSession | undefined>;
-  
-  // Feedback Responses
-  getFeedbackResponses(sessionId: number): Promise<FeedbackResponse[]>;
-  createFeedbackResponse(response: InsertFeedbackResponse): Promise<FeedbackResponse>;
-  
-  // Lead Interactions
-  getLeadInteractions(leadId: number): Promise<LeadInteraction[]>;
-  createLeadInteraction(interaction: InsertLeadInteraction): Promise<LeadInteraction>;
 }
 
 export class MemStorage implements IStorage {
@@ -75,17 +61,11 @@ export class MemStorage implements IStorage {
   private agentSchedules: Map<number, AgentSchedule>;
   private showingRequests: Map<number, ShowingRequest>;
   private scheduledShowings: Map<number, ScheduledShowing>;
-  private feedbackSessions: Map<number, FeedbackSession>;
-  private feedbackResponses: Map<number, FeedbackResponse>;
-  private leadInteractions: Map<number, LeadInteraction>;
   private currentPropertyId: number;
   private currentLeadId: number;
   private currentScheduleId: number;
   private currentRequestId: number;
   private currentShowingId: number;
-  private currentFeedbackSessionId: number;
-  private currentFeedbackResponseId: number;
-  private currentInteractionId: number;
 
   constructor() {
     this.properties = new Map();
@@ -93,21 +73,14 @@ export class MemStorage implements IStorage {
     this.agentSchedules = new Map();
     this.showingRequests = new Map();
     this.scheduledShowings = new Map();
-    this.feedbackSessions = new Map();
-    this.feedbackResponses = new Map();
-    this.leadInteractions = new Map();
     this.currentPropertyId = 1;
     this.currentLeadId = 1;
     this.currentScheduleId = 1;
     this.currentRequestId = 1;
     this.currentShowingId = 1;
-    this.currentFeedbackSessionId = 1;
-    this.currentFeedbackResponseId = 1;
-    this.currentInteractionId = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
-    this.initializeSampleFeedbackData();
   }
 
   private initializeSampleData() {
@@ -437,120 +410,6 @@ export class MemStorage implements IStorage {
 
   async deleteScheduledShowing(id: number): Promise<boolean> {
     return this.scheduledShowings.delete(id);
-  }
-
-  // Feedback Sessions
-  async getFeedbackSessions(leadId?: number): Promise<any[]> {
-    const sessions = Array.from(this.feedbackSessions.values());
-    return leadId ? sessions.filter(session => session.leadId === leadId) : sessions;
-  }
-
-  async createFeedbackSession(insertSession: any): Promise<any> {
-    const session: any = { 
-      id: this.currentFeedbackSessionId++, 
-      ...insertSession,
-      createdAt: new Date().toISOString()
-    };
-    this.feedbackSessions.set(session.id, session);
-    return session;
-  }
-
-  async updateFeedbackSession(id: number, updates: any): Promise<any> {
-    const session = this.feedbackSessions.get(id);
-    if (session) {
-      const updatedSession = { ...session, ...updates };
-      this.feedbackSessions.set(id, updatedSession);
-      return updatedSession;
-    }
-    return undefined;
-  }
-
-  async getFeedbackSession(id: number): Promise<any> {
-    return this.feedbackSessions.get(id);
-  }
-
-  // Feedback Responses
-  async getFeedbackResponses(sessionId: number): Promise<any[]> {
-    return Array.from(this.feedbackResponses.values()).filter(response => response.sessionId === sessionId);
-  }
-
-  async createFeedbackResponse(insertResponse: any): Promise<any> {
-    const response: any = { 
-      id: this.currentFeedbackResponseId++, 
-      ...insertResponse,
-      createdAt: new Date().toISOString()
-    };
-    this.feedbackResponses.set(response.id, response);
-    return response;
-  }
-
-  // Lead Interactions
-  async getLeadInteractions(leadId: number): Promise<any[]> {
-    return Array.from(this.leadInteractions.values()).filter(interaction => interaction.leadId === leadId);
-  }
-
-  async createLeadInteraction(insertInteraction: any): Promise<any> {
-    const interaction: any = { 
-      id: this.currentInteractionId++, 
-      ...insertInteraction,
-      createdAt: new Date().toISOString()
-    };
-    this.leadInteractions.set(interaction.id, interaction);
-    return interaction;
-  }
-
-  private initializeSampleFeedbackData() {
-    // Create sample feedback sessions for demonstration
-    const sampleSessions = [
-      {
-        id: 1,
-        leadId: 1,
-        propertyId: 1,
-        sessionType: "post_tour",
-        status: "completed",
-        currentQuestionIndex: 5,
-        preferredResponseMethod: "text",
-        discoveredBudget: 2800,
-        proposedMoveInDate: "2024-02-15",
-        interestLevel: 9,
-        createdAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      },
-      {
-        id: 2,
-        leadId: 2,
-        propertyId: 1,
-        sessionType: "discovery",
-        status: "completed",
-        currentQuestionIndex: 4,
-        preferredResponseMethod: "voice",
-        discoveredBudget: 2600,
-        proposedMoveInDate: "2024-03-01",
-        interestLevel: 7,
-        createdAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      },
-      {
-        id: 3,
-        leadId: 3,
-        propertyId: 1,
-        sessionType: "post_tour",
-        status: "completed",
-        currentQuestionIndex: 6,
-        preferredResponseMethod: "text",
-        discoveredBudget: 3000,
-        proposedMoveInDate: "2024-01-30",
-        interestLevel: 8,
-        createdAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      }
-    ];
-
-    sampleSessions.forEach(session => {
-      this.feedbackSessions.set(session.id, session);
-    });
-
-    this.currentFeedbackSessionId = 4;
   }
 }
 
