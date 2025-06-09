@@ -13,6 +13,7 @@ import Feedback from "@/pages/feedback";
 import Performance from "@/pages/performance";
 import Import from "@/pages/import";
 import Login from "@/pages/login";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -73,6 +74,14 @@ function Router() {
           <Sidebar />
           <main className="flex-1 overflow-auto">
             <Import />
+          </main>
+        </div>
+      </Route>
+      <Route path="/profile">
+        <div className="flex h-screen bg-gray-50">
+          <Sidebar />
+          <main className="flex-1 overflow-auto">
+            <Profile />
           </main>
         </div>
       </Route>

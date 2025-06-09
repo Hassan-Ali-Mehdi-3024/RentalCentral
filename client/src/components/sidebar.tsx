@@ -44,6 +44,26 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+      
+      {/* Profile Section */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="text-sm">
+              <p className="font-medium text-gray-900">John Doe</p>
+              <p className="text-gray-500">Licensed Agent</p>
+            </div>
+          </div>
+          <ProfileDropdown 
+            user={{
+              firstName: "John",
+              lastName: "Doe",
+              email: "john.doe@example.com",
+              profileImageUrl: ""
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
