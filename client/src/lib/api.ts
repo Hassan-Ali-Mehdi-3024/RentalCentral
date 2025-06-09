@@ -135,5 +135,28 @@ export const api = {
       message: string;
     }> =>
       apiRequest("POST", "/api/feedback/generate-question", { sessionId, context }).then(res => res.json())
+  },
+
+  // Performance Analytics API
+  performance: {
+    getPropertyPerformance: (propertyId: number): Promise<{
+      property: Property;
+      prospects: any[];
+      feedbackCategories: any[];
+      inquiryData: any[];
+      performance: any;
+    }> =>
+      fetch(`/api/performance/${propertyId}`, { credentials: "include" }).then(res => res.json()),
+      
+    updateFeedbackSummary: (propertyId: number, category: string, summaryText: string): Promise<any> =>
+      apiRequest("PUT", `/api/performance/${propertyId}/feedback-summary`, { category, summaryText }).then(res => res.json()),
+      
+    getInquiryStats: (propertyId: number): Promise<{
+      totalInquiries: number;
+      totalTours: number;
+      conversionRate: number;
+      dailyData: any[];
+    }> =>
+      fetch(`/api/performance/${propertyId}/inquiry-stats`, { credentials: "include" }).then(res => res.json())
   }
 };
