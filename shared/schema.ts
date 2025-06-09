@@ -89,6 +89,31 @@ export const leadInteractions = pgTable("lead_interactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const userProfiles = pgTable("user_profiles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  profileImageUrl: varchar("profile_image_url"),
+  isLicensedAgent: boolean("is_licensed_agent").default(false),
+  // Licensed agent fields
+  licenseNumber: varchar("license_number"),
+  brokerageName: varchar("brokerage_name"),
+  brokerageAddress: text("brokerage_address"),
+  brokeragePhone: varchar("brokerage_phone"),
+  licenseState: varchar("license_state"),
+  // Non-licensed owner fields
+  businessName: varchar("business_name"),
+  businessAddress: text("business_address"),
+  yearsInBusiness: integer("years_in_business"),
+  numberOfProperties: integer("number_of_properties"),
+  propertyTypes: varchar("property_types"), // JSON array of property types
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
 });
@@ -143,3 +168,12 @@ export type InsertFeedbackResponse = z.infer<typeof insertFeedbackResponseSchema
 export type FeedbackResponse = typeof feedbackResponses.$inferSelect;
 export type InsertLeadInteraction = z.infer<typeof insertLeadInteractionSchema>;
 export type LeadInteraction = typeof leadInteractions.$inferSelect;
+
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;

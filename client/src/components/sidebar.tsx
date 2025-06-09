@@ -1,6 +1,7 @@
 import { Building, Home, Users, Upload, BarChart3, Calendar, MessageSquare, TrendingUp } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
