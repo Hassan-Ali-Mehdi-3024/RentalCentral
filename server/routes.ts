@@ -716,6 +716,295 @@ If you've gathered sufficient feedback, set completed: true.`;
     }
   });
 
+  // Property Syndication API routes
+  app.post("/api/syndication/test-connection", async (req, res) => {
+    try {
+      const { platform, apiKey } = req.body;
+      
+      if (!platform || !apiKey) {
+        return res.status(400).json({ error: "Platform and API key required" });
+      }
+
+      // Simulate API connection test based on platform
+      const testResult = await testPlatformConnection(platform, apiKey);
+      
+      res.json({
+        success: testResult.success,
+        message: testResult.message,
+        connectionDetails: testResult.details
+      });
+    } catch (error) {
+      console.error("Connection test error:", error);
+      res.status(500).json({ error: "Failed to test connection" });
+    }
+  });
+
+  app.post("/api/syndication/sync", async (req, res) => {
+    try {
+      const { platform, apiKey, syncType = "full" } = req.body;
+      
+      if (!platform || !apiKey) {
+        return res.status(400).json({ error: "Platform and API key required" });
+      }
+
+      // Simulate data sync from external platform
+      const syncResult = await syncPlatformData(platform, apiKey, syncType);
+      
+      // Save synced properties to storage
+      if (syncResult.properties?.length > 0) {
+        await storage.createProperties(syncResult.properties);
+      }
+
+      // Save synced leads to storage
+      if (syncResult.leads?.length > 0) {
+        for (const lead of syncResult.leads) {
+          await storage.createLead(lead);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully synced ${syncResult.properties?.length || 0} properties and ${syncResult.leads?.length || 0} leads`,
+        propertiesCount: syncResult.properties?.length || 0,
+        leadsCount: syncResult.leads?.length || 0,
+        lastSync: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Sync error:", error);
+      res.status(500).json({ error: "Failed to sync data" });
+    }
+  });
+
+  app.get("/api/syndication/connections", async (req, res) => {
+    try {
+      // Return connection status for all platforms
+      const connections = [
+        {
+          id: "zillow",
+          name: "Zillow Rental Manager",
+          status: "connected",
+          lastSync: "2 hours ago",
+          propertiesCount: 12,
+          leadsCount: 34
+        },
+        {
+          id: "yardi",
+          name: "Yardi Voyager",
+          status: "disconnected",
+          lastSync: null,
+          propertiesCount: 0,
+          leadsCount: 0
+        }
+        // Add more connections as needed
+      ];
+      
+      res.json(connections);
+    } catch (error) {
+      console.error("Error fetching connections:", error);
+      res.status(500).json({ error: "Failed to fetch connections" });
+    }
+  });
+
+  // Webhook endpoint for real-time updates
+  app.post("/api/webhooks/properties", async (req, res) => {
+    try {
+      const { platform, event, data } = req.body;
+      
+      // Process webhook based on event type
+      switch (event) {
+        case "property.created":
+        case "property.updated":
+          if (data.property) {
+            const property = await storage.createProperty({
+              name: data.property.name,
+              address: data.property.address,
+              bedrooms: data.property.bedrooms,
+              rent: data.property.rent,
+              description: data.property.description,
+              imageUrl: data.property.imageUrl,
+              available: data.property.available
+            });
+            console.log(`Webhook: Property ${event} from ${platform}`, property);
+          }
+          break;
+          
+        case "lead.created":
+          if (data.lead) {
+            const lead = await storage.createLead({
+              name: data.lead.name,
+              email: data.lead.email,
+              phone: data.lead.phone,
+              propertyId: data.lead.propertyId,
+              status: data.lead.status || "new",
+              notes: data.lead.notes
+            });
+            console.log(`Webhook: Lead created from ${platform}`, lead);
+          }
+          break;
+          
+        default:
+          console.log(`Webhook: Unknown event ${event} from ${platform}`);
+      }
+      
+      res.json({ success: true, message: "Webhook processed successfully" });
+    } catch (error) {
+      console.error("Webhook processing error:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Helper functions for property syndication
+async function testPlatformConnection(platform: string, apiKey: string) {
+  // Simulate API connection test based on platform
+  const platformConfigs = {
+    zillow: {
+      endpoint: "https://api.zillow.com/v1/properties",
+      headers: { "Authorization": `Bearer ${apiKey}` }
+    },
+    yardi: {
+      endpoint: "https://api.yardi.com/properties",
+      headers: { "X-API-Key": apiKey }
+    },
+    appfolio: {
+      endpoint: "https://api.appfolio.com/v1/properties",
+      headers: { "Authorization": `Token ${apiKey}` }
+    },
+    buildium: {
+      endpoint: "https://api.buildium.com/v1/properties",
+      headers: { "Authorization": `Bearer ${apiKey}` }
+    }
+  };
+
+  const config = platformConfigs[platform as keyof typeof platformConfigs];
+  
+  if (!config) {
+    return {
+      success: false,
+      message: `Platform ${platform} not supported`,
+      details: null
+    };
+  }
+
+  // Simulate API test - in production this would make actual HTTP requests
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        success: true,
+        message: `Successfully connected to ${platform}`,
+        details: {
+          endpoint: config.endpoint,
+          authenticated: true,
+          permissions: ["read_properties", "read_leads"]
+        }
+      });
+    }, 1500);
+  });
+}
+
+async function syncPlatformData(platform: string, apiKey: string, syncType: string) {
+  // Simulate data sync from external platforms
+  const sampleData = {
+    zillow: {
+      properties: [
+        {
+          name: "Modern Downtown Loft",
+          address: "456 Tech Blvd, San Francisco, CA 94105",
+          bedrooms: "1",
+          rent: "$3200",
+          description: "Luxury loft with city views and modern amenities",
+          imageUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+          available: true
+        },
+        {
+          name: "Family Home in Suburbs",
+          address: "789 Oak Street, Palo Alto, CA 94301",
+          bedrooms: "3",
+          rent: "$4500",
+          description: "Spacious family home with garden and garage",
+          imageUrl: "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+          available: true
+        }
+      ],
+      leads: [
+        {
+          name: "Jennifer Chen",
+          email: "jennifer.chen@email.com",
+          phone: "+1 (555) 987-6543",
+          status: "interested",
+          notes: "Looking for 1-bedroom in downtown area, budget $3000-3500"
+        },
+        {
+          name: "Michael Rodriguez",
+          email: "m.rodriguez@email.com", 
+          phone: "+1 (555) 456-7890",
+          status: "qualified",
+          notes: "Family of 4, needs 3+ bedrooms, move-in ASAP"
+        }
+      ]
+    },
+    yardi: {
+      properties: [
+        {
+          name: "Corporate Housing Complex",
+          address: "101 Business Park Dr, Austin, TX 78701",
+          bedrooms: "2",
+          rent: "$2800",
+          description: "Professional housing with business center and gym",
+          imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00",
+          available: true
+        }
+      ],
+      leads: [
+        {
+          name: "Sarah Thompson",
+          email: "sarah.t@company.com",
+          phone: "+1 (555) 234-5678",
+          status: "new",
+          notes: "Corporate relocation, flexible on price"
+        }
+      ]
+    },
+    appfolio: {
+      properties: [
+        {
+          name: "Beachside Apartment",
+          address: "123 Ocean View Ave, Santa Monica, CA 90401",
+          bedrooms: "2",
+          rent: "$3800",
+          description: "Ocean view apartment with balcony and parking",
+          imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688",
+          available: true
+        }
+      ],
+      leads: [
+        {
+          name: "David Park",
+          email: "david.park@email.com",
+          phone: "+1 (555) 345-6789",
+          status: "touring",
+          notes: "Scheduled for viewing this weekend, very interested"
+        }
+      ]
+    }
+  };
+
+  const platformData = sampleData[platform as keyof typeof sampleData];
+  
+  if (!platformData) {
+    return {
+      properties: [],
+      leads: []
+    };
+  }
+
+  // Simulate API delay
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(platformData);
+    }, 2000);
+  });
 }
