@@ -155,7 +155,7 @@ export function VoiceScheduler() {
               <SelectValue placeholder="All properties" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All properties</SelectItem>
+              <SelectItem value="all">All properties</SelectItem>
               {properties.map((property) => (
                 <SelectItem key={property.id} value={property.id.toString()}>
                   {property.name}

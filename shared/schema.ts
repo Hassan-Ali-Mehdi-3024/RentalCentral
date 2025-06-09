@@ -53,6 +53,42 @@ export const scheduledShowings = pgTable("scheduled_showings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const feedbackSessions = pgTable("feedback_sessions", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").references(() => leads.id).notNull(),
+  propertyId: integer("property_id").references(() => properties.id).notNull(),
+  sessionType: varchar("session_type", { length: 50 }).notNull(), // 'discovery' | 'post_tour'
+  status: varchar("status", { length: 50 }).notNull().default("active"), // 'active' | 'completed' | 'abandoned'
+  currentQuestionIndex: integer("current_question_index").notNull().default(0),
+  preferredResponseMethod: varchar("preferred_response_method", { length: 50 }), // 'voice' | 'text' | 'dropdown' | 'emoji'
+  discoveredBudget: integer("discovered_budget"),
+  proposedMoveInDate: varchar("proposed_move_in_date", { length: 10 }),
+  interestLevel: integer("interest_level"), // 1-10 scale
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const feedbackResponses = pgTable("feedback_responses", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => feedbackSessions.id).notNull(),
+  questionId: varchar("question_id", { length: 100 }).notNull(),
+  questionText: text("question_text").notNull(),
+  responseMethod: varchar("response_method", { length: 50 }).notNull(), // 'voice' | 'text' | 'dropdown' | 'emoji'
+  responseValue: text("response_value").notNull(),
+  responseText: text("response_text"), // transcribed or typed text
+  aiFollowUp: text("ai_follow_up"), // AI's follow-up question or comment
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const leadInteractions = pgTable("lead_interactions", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").references(() => leads.id).notNull(),
+  interactionType: varchar("interaction_type", { length: 100 }).notNull(), // 'feedback_started' | 'tour_scheduled' | 'follow_up_sent'
+  description: text("description").notNull(),
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
 });
@@ -75,6 +111,22 @@ export const insertScheduledShowingSchema = createInsertSchema(scheduledShowings
   createdAt: true,
 });
 
+export const insertFeedbackSessionSchema = createInsertSchema(feedbackSessions).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertFeedbackResponseSchema = createInsertSchema(feedbackResponses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLeadInteractionSchema = createInsertSchema(leadInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
@@ -85,3 +137,9 @@ export type InsertShowingRequest = z.infer<typeof insertShowingRequestSchema>;
 export type ShowingRequest = typeof showingRequests.$inferSelect;
 export type InsertScheduledShowing = z.infer<typeof insertScheduledShowingSchema>;
 export type ScheduledShowing = typeof scheduledShowings.$inferSelect;
+export type InsertFeedbackSession = z.infer<typeof insertFeedbackSessionSchema>;
+export type FeedbackSession = typeof feedbackSessions.$inferSelect;
+export type InsertFeedbackResponse = z.infer<typeof insertFeedbackResponseSchema>;
+export type FeedbackResponse = typeof feedbackResponses.$inferSelect;
+export type InsertLeadInteraction = z.infer<typeof insertLeadInteractionSchema>;
+export type LeadInteraction = typeof leadInteractions.$inferSelect;

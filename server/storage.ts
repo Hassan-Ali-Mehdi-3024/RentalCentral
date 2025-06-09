@@ -53,6 +53,20 @@ export interface IStorage {
   createScheduledShowing(showing: InsertScheduledShowing): Promise<ScheduledShowing>;
   updateScheduledShowing(id: number, updates: Partial<InsertScheduledShowing>): Promise<ScheduledShowing | undefined>;
   deleteScheduledShowing(id: number): Promise<boolean>;
+  
+  // Feedback Sessions
+  getFeedbackSessions(leadId?: number): Promise<FeedbackSession[]>;
+  createFeedbackSession(session: InsertFeedbackSession): Promise<FeedbackSession>;
+  updateFeedbackSession(id: number, updates: Partial<InsertFeedbackSession>): Promise<FeedbackSession | undefined>;
+  getFeedbackSession(id: number): Promise<FeedbackSession | undefined>;
+  
+  // Feedback Responses
+  getFeedbackResponses(sessionId: number): Promise<FeedbackResponse[]>;
+  createFeedbackResponse(response: InsertFeedbackResponse): Promise<FeedbackResponse>;
+  
+  // Lead Interactions
+  getLeadInteractions(leadId: number): Promise<LeadInteraction[]>;
+  createLeadInteraction(interaction: InsertLeadInteraction): Promise<LeadInteraction>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,11 +75,17 @@ export class MemStorage implements IStorage {
   private agentSchedules: Map<number, AgentSchedule>;
   private showingRequests: Map<number, ShowingRequest>;
   private scheduledShowings: Map<number, ScheduledShowing>;
+  private feedbackSessions: Map<number, FeedbackSession>;
+  private feedbackResponses: Map<number, FeedbackResponse>;
+  private leadInteractions: Map<number, LeadInteraction>;
   private currentPropertyId: number;
   private currentLeadId: number;
   private currentScheduleId: number;
   private currentRequestId: number;
   private currentShowingId: number;
+  private currentFeedbackSessionId: number;
+  private currentFeedbackResponseId: number;
+  private currentInteractionId: number;
 
   constructor() {
     this.properties = new Map();
