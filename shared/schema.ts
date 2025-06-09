@@ -77,6 +77,26 @@ export const feedbackResponses = pgTable("feedback_responses", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const propertyPerformance = pgTable("property_performance", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull().references(() => properties.id),
+  vacancyDate: varchar("vacancy_date", { length: 10 }).notNull(), // YYYY-MM-DD format
+  inquiryCount: integer("inquiry_count").notNull().default(0),
+  tourCount: integer("tour_count").notNull().default(0),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+});
+
+export const feedbackSummaries = pgTable("feedback_summaries", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull().references(() => properties.id),
+  category: varchar("category", { length: 50 }).notNull(), // 'price', 'amenities', 'location', 'size', 'comparison', 'suggestions'
+  summaryText: text("summary_text").notNull(),
+  isEdited: boolean("is_edited").notNull().default(false),
+  editedBy: varchar("edited_by", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
 });
@@ -110,6 +130,17 @@ export const insertFeedbackResponseSchema = createInsertSchema(feedbackResponses
   createdAt: true,
 });
 
+export const insertPropertyPerformanceSchema = createInsertSchema(propertyPerformance).omit({
+  id: true,
+  lastUpdated: true,
+});
+
+export const insertFeedbackSummarySchema = createInsertSchema(feedbackSummaries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
@@ -124,3 +155,7 @@ export type InsertFeedbackSession = z.infer<typeof insertFeedbackSessionSchema>;
 export type FeedbackSession = typeof feedbackSessions.$inferSelect;
 export type InsertFeedbackResponse = z.infer<typeof insertFeedbackResponseSchema>;
 export type FeedbackResponse = typeof feedbackResponses.$inferSelect;
+export type InsertPropertyPerformance = z.infer<typeof insertPropertyPerformanceSchema>;
+export type PropertyPerformance = typeof propertyPerformance.$inferSelect;
+export type InsertFeedbackSummary = z.infer<typeof insertFeedbackSummarySchema>;
+export type FeedbackSummary = typeof feedbackSummaries.$inferSelect;
