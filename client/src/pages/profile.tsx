@@ -467,7 +467,7 @@ export default function Profile() {
                     
                     <div>
                       <Label htmlFor="licenseState">License State *</Label>
-                      <Select value={watch("licenseState")} onValueChange={(value) => setValue("licenseState", value)}>
+                      <Select value={watch("licenseState") || ""} onValueChange={(value) => setValue("licenseState", value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select state" />
                         </SelectTrigger>

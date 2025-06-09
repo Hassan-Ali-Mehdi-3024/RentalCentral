@@ -7,7 +7,6 @@ const navigation = [
   { name: "Properties", href: "/properties", icon: Building },
   { name: "Leads", href: "/leads", icon: Users },
   { name: "Scheduling", href: "/scheduling", icon: Calendar },
-  { name: "Feedback", href: "/feedback", icon: MessageSquare },
   { name: "Performance", href: "/performance", icon: TrendingUp },
   { name: "Import", href: "/import", icon: Upload },
 ];
