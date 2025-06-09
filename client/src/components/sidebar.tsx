@@ -1,4 +1,4 @@
-import { Building, Home, Users, Upload, BarChart3, Calendar } from "lucide-react";
+import { Building, Home, Users, Upload, BarChart3, Calendar, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +7,7 @@ const navigation = [
   { name: "Properties", href: "/properties", icon: Building },
   { name: "Leads", href: "/leads", icon: Users },
   { name: "Scheduling", href: "/scheduling", icon: Calendar },
+  { name: "Feedback", href: "/feedback", icon: MessageSquare },
   { name: "Import", href: "/import", icon: Upload },
 ];
 

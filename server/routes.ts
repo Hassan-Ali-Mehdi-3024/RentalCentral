@@ -405,6 +405,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Feedback Sessions routes
+  app.post("/api/feedback/sessions", async (req, res) => {
+    try {
+      const sessionData = insertFeedbackSessionSchema.parse(req.body);
+      const session = await storage.createFeedbackSession(sessionData);
+      res.status(201).json(session);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid session data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create feedback session" });
+      }
+    }
+  });
+
+  app.get("/api/feedback/sessions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const session = await storage.getFeedbackSession(id);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
+  // Feedback Responses routes
+  app.post("/api/feedback/responses", async (req, res) => {
+    try {
+      const responseData = insertFeedbackResponseSchema.parse(req.body);
+      const response = await storage.createFeedbackResponse(responseData);
+      res.status(201).json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid response data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create feedback response" });
+      }
+    }
+  });
+
+  // AI Question Generation route
+  app.post("/api/feedback/generate-question", async (req, res) => {
+    try {
+      const { sessionId, context } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: "Session ID is required" });
+      }
+
+      const session = await storage.getFeedbackSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      const responses = await storage.getFeedbackResponses(sessionId);
+      const currentIndex = session.currentQuestionIndex;
+
+      // Use OpenAI to generate intelligent follow-up questions
+      const systemPrompt = session.sessionType === 'discovery' 
+        ? `You are a property management discovery assistant. Your goal is to understand what the prospect is looking for in their next rental home and encourage them to schedule a tour. Ask engaging questions to discover their preferences, budget, timeline, and specific needs. IMPORTANT: You must cleverly ask about their budget/price range and move-in timeline without being too direct. Make it conversational.
+
+Key objectives:
+1. Understand their housing preferences (size, location, amenities)
+2. Discover their budget range (ask creatively - "What monthly payment fits comfortably in your budget?" or "What price range are you considering?")
+3. Learn their timeline (ask naturally - "When are you hoping to move?" or "What's your ideal move-in timeframe?")
+4. Build interest in scheduling a tour
+5. Keep questions engaging and conversational
+
+Previous responses: ${JSON.stringify(responses.map(r => ({ question: r.questionText, answer: r.responseText })))}
+
+Generate the next question as JSON with this structure:
+{
+  "question": {
+    "text": "Your question here",
+    "type": "open|pricing|timeline|interest|preference",
+    "responseOptions": ["option1", "option2"] // only for dropdown responses
+  },
+  "completed": false
+}
+
+If you've gathered sufficient information (preferences, budget hint, timeline, and interest), set completed: true.`
+        : `You are a property management feedback assistant collecting post-tour feedback. Your goal is to understand the prospect's experience and gauge their interest level. Ask about their tour experience, what they liked/disliked, and their likelihood to move forward.
+
+Key objectives:
+1. Understand their tour experience
+2. Learn what they liked and didn't like
+3. Gauge their interest level
+4. If they seem interested, understand their decision timeline
+5. If not interested, understand their concerns
+
+Previous responses: ${JSON.stringify(responses.map(r => ({ question: r.questionText, answer: r.responseText })))}
+
+Generate the next question as JSON with this structure:
+{
+  "question": {
+    "text": "Your question here",
+    "type": "open|experience|interest|timeline|concerns",
+    "responseOptions": ["option1", "option2"] // only for dropdown responses  
+  },
+  "completed": false
+}
+
+If you've gathered sufficient feedback, set completed: true.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: `Generate the next question for this feedback session. Current question index: ${currentIndex}. Session type: ${session.sessionType}.`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const questionData = JSON.parse(response.choices[0].message.content || '{"completed": true}');
+
+      // Update session with new question index
+      if (!questionData.completed) {
+        await storage.updateFeedbackSession(sessionId, {
+          currentQuestionIndex: currentIndex + 1
+        });
+      } else {
+        await storage.updateFeedbackSession(sessionId, {
+          status: "completed"
+        });
+      }
+
+      res.json({
+        question: questionData.question,
+        completed: questionData.completed,
+        message: questionData.completed ? "Feedback session completed" : "Next question generated"
+      });
+    } catch (error) {
+      console.error('Question generation error:', error);
+      res.status(500).json({ error: "Failed to generate question" });
+    }
+  });
+
   // Scheduled Showings routes
   app.get("/api/showings", async (req, res) => {
     try {
