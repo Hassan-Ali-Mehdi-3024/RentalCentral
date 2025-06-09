@@ -222,29 +222,29 @@ export default function Login() {
         <div className="relative h-full flex flex-col justify-center px-12 text-white">
           <div className="max-w-md">
             <h1 className="text-4xl font-bold leading-tight mb-6">
-              Manage your properties with confidence
+              Your AI Leasing Copilot
             </h1>
             <p className="text-xl text-blue-100 mb-8">
-              Streamline your rental business with our comprehensive property management platform.
+              Get your rental property an offer within 30 days. Our AI-powered copilot optimizes every step from listing to lease signing.
             </p>
             
             {/* Feature List */}
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-white rounded-full" />
-                <span className="text-blue-100">Lead tracking and management</span>
+                <span className="text-blue-100">Smart lead qualification & scoring</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-white rounded-full" />
-                <span className="text-blue-100">Automated scheduling and tours</span>
+                <span className="text-blue-100">Automated tour scheduling & follow-ups</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-white rounded-full" />
-                <span className="text-blue-100">AI-powered feedback analysis</span>
+                <span className="text-blue-100">AI-driven rent optimization</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-white rounded-full" />
-                <span className="text-blue-100">Performance analytics and insights</span>
+                <span className="text-blue-100">30-day lease guarantee analytics</span>
               </div>
             </div>
           </div>

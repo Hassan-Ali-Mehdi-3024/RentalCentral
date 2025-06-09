@@ -10,38 +10,38 @@ export default function Landing() {
   const features = [
     {
       icon: Building2,
-      title: "Property Management",
-      description: "Manage rental listings, track availability, and organize property information in one central dashboard."
+      title: "Smart Lead Qualification",
+      description: "AI-powered scoring system identifies high-quality prospects and prioritizes leads most likely to lease within 30 days."
     },
     {
       icon: Users,
-      title: "Lead Tracking",
-      description: "Capture and track leads from multiple sources with automated assignment and follow-up capabilities."
+      title: "Automated Prospect Nurturing",
+      description: "Intelligent follow-up sequences keep prospects engaged with personalized messaging and timely responses."
     },
     {
       icon: Calendar,
-      title: "Smart Scheduling",
-      description: "AI-powered scheduling system with voice commands and automated tour booking for prospects."
+      title: "Instant Tour Booking",
+      description: "Voice-enabled scheduling and self-service booking system converts prospects to tours in minutes, not days."
     },
     {
       icon: MessageSquare,
-      title: "Feedback Analysis",
-      description: "Intelligent questionnaires that discover prospect preferences, budgets, and move-in timelines."
+      title: "AI Feedback Intelligence",
+      description: "Advanced questionnaires uncover prospect motivations, budget flexibility, and decision timelines."
     },
     {
       icon: TrendingUp,
-      title: "Performance Analytics",
-      description: "Comprehensive insights comparing rental income potential and property performance metrics."
+      title: "30-Day Lease Analytics",
+      description: "Real-time insights and optimization recommendations to guarantee your property gets leased fast."
     }
   ];
 
   const benefits = [
-    "Automated lead qualification and follow-up",
-    "Voice-enabled scheduling and feedback collection",
-    "Real-time property performance analytics",
-    "Prospect budget and timeline discovery",
-    "Streamlined tour booking and management",
-    "Comprehensive feedback categorization"
+    "30-day lease guarantee with AI optimization",
+    "Smart prospect scoring and prioritization",
+    "Automated tour scheduling and follow-ups",
+    "Real-time pricing and market insights",
+    "Voice-enabled feedback collection",
+    "Predictive analytics for faster leasing"
   ];
 
   return (
@@ -67,12 +67,12 @@ export default function Landing() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-            Streamline Your
-            <span className="text-primary"> Property Management</span>
+            Get Your Rental Leased
+            <span className="text-primary"> Within 30 Days</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Complete rental management platform with AI-powered lead tracking, automated scheduling, 
-            and intelligent feedback analysis to maximize your property performance.
+            Your AI leasing copilot that optimizes every step from listing to lease signing. 
+            Smart lead qualification, automated tours, and data-driven insights guarantee results.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -99,11 +99,11 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Everything you need to manage properties efficiently
+              Everything you need to lease faster with AI
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              From lead capture to performance analytics, PropertyFlow provides comprehensive tools 
-              for modern property management.
+              From smart lead scoring to automated tours, your AI copilot handles every step 
+              to get your rental property leased within 30 days.
             </p>
           </div>
 
@@ -133,11 +133,11 @@ export default function Landing() {
           <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                Maximize your rental income with intelligent insights
+                Lease faster with AI-powered insights
               </h2>
               <p className="text-lg text-gray-600 mb-8">
-                PropertyFlow uses AI to analyze prospect feedback, compare rental income potential, 
-                and provide actionable insights to help you choose the best tenants and optimize pricing.
+                Your AI copilot analyzes prospect behavior, optimizes pricing strategy, 
+                and provides data-driven recommendations to secure quality tenants within 30 days.
               </p>
               <div className="space-y-4">
                 {benefits.map((benefit, index) => (
@@ -180,11 +180,11 @@ export default function Landing() {
       <section className="py-20 bg-primary">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-white mb-6">
-            Ready to transform your property management?
+            Ready to lease your property within 30 days?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join thousands of property managers who trust PropertyFlow to streamline their operations 
-            and maximize rental income.
+            Join hundreds of landlords who use our AI leasing copilot to secure quality tenants faster 
+            and eliminate vacancy periods.
           </p>
           <Button 
             onClick={handleLogin}
