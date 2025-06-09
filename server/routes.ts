@@ -232,6 +232,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent Schedules routes
+  app.get("/api/schedules", async (req, res) => {
+    try {
+      const { propertyId } = req.query;
+      const schedules = await storage.getAgentSchedules(propertyId ? parseInt(propertyId as string) : undefined);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch schedules" });
+    }
+  });
+
+  app.post("/api/schedules", async (req, res) => {
+    try {
+      const validatedData = insertAgentScheduleSchema.parse(req.body);
+      const schedule = await storage.createAgentSchedule(validatedData);
+      res.status(201).json(schedule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid schedule data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create schedule" });
+    }
+  });
+
+  // Showing Requests routes
+  app.get("/api/showing-requests", async (req, res) => {
+    try {
+      const { propertyId } = req.query;
+      const requests = await storage.getShowingRequests(propertyId ? parseInt(propertyId as string) : undefined);
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch showing requests" });
+    }
+  });
+
+  app.post("/api/showing-requests", async (req, res) => {
+    try {
+      const validatedData = insertShowingRequestSchema.parse(req.body);
+      const request = await storage.createShowingRequest(validatedData);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid showing request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create showing request" });
+    }
+  });
+
+  app.get("/api/properties/:id/popular-times", async (req, res) => {
+    try {
+      const propertyId = parseInt(req.params.id);
+      const popularTimes = await storage.getPopularShowingTimes(propertyId);
+      res.json(popularTimes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch popular showing times" });
+    }
+  });
+
+  // Scheduled Showings routes
+  app.get("/api/showings", async (req, res) => {
+    try {
+      const { propertyId } = req.query;
+      const showings = await storage.getScheduledShowings(propertyId ? parseInt(propertyId as string) : undefined);
+      res.json(showings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch showings" });
+    }
+  });
+
+  app.post("/api/showings", async (req, res) => {
+    try {
+      const validatedData = insertScheduledShowingSchema.parse(req.body);
+      const showing = await storage.createScheduledShowing(validatedData);
+      
+      // When a showing is scheduled, update related showing requests to confirmed
+      const requests = await storage.getShowingRequests(showing.propertyId);
+      const matchingRequests = requests.filter(r => 
+        r.requestedDate === showing.showingDate && 
+        r.requestedTime === showing.showingTime &&
+        r.status === "pending"
+      );
+      
+      for (const request of matchingRequests) {
+        await storage.updateShowingRequest(request.id, { status: "confirmed" });
+      }
+      
+      res.status(201).json(showing);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid showing data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create showing" });
+    }
+  });
+
+  // Voice command processing for agent schedules
+  app.post("/api/voice-schedule", async (req, res) => {
+    try {
+      const { transcript, propertyId } = req.body;
+      
+      if (!transcript) {
+        return res.status(400).json({ message: "No transcript provided" });
+      }
+
+      // Use OpenAI to parse the voice command
+      const OpenAI = require("openai");
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: `You are a scheduling assistant for a real estate agent. Parse voice commands to extract scheduling preferences. 
+            
+            Return JSON with this structure:
+            {
+              "schedules": [
+                {
+                  "dayOfWeek": number, // 0=Sunday, 1=Monday, etc.
+                  "startTime": "HH:MM", // 24-hour format
+                  "endTime": "HH:MM", // 24-hour format
+                  "propertyId": number
+                }
+              ]
+            }
+            
+            Common phrases:
+            - "weekends" = Saturday (6) and Sunday (0)
+            - "weekdays" = Monday (1) through Friday (5)
+            - Convert times like "2 PM" to "14:00"
+            - If no specific property mentioned, use the provided propertyId`
+          },
+          {
+            role: "user",
+            content: `Parse this scheduling request: "${transcript}". Property ID: ${propertyId || 'not specified'}`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const parsedSchedule = JSON.parse(response.choices[0].message.content);
+      
+      // Create the schedules in the database
+      const createdSchedules = [];
+      for (const schedule of parsedSchedule.schedules) {
+        const created = await storage.createAgentSchedule({
+          propertyId: schedule.propertyId || propertyId,
+          dayOfWeek: schedule.dayOfWeek,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          isActive: true
+        });
+        createdSchedules.push(created);
+      }
+
+      res.json({
+        message: "Schedule created successfully",
+        transcript,
+        schedules: createdSchedules
+      });
+    } catch (error) {
+      console.error("Voice schedule error:", error);
+      res.status(500).json({ message: "Failed to process voice command" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

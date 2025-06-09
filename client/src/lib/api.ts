@@ -1,5 +1,16 @@
 import { apiRequest } from "./queryClient";
-import type { Property, Lead, InsertProperty, InsertLead } from "@shared/schema";
+import type { 
+  Property, 
+  Lead, 
+  InsertProperty, 
+  InsertLead,
+  AgentSchedule,
+  InsertAgentSchedule,
+  ShowingRequest,
+  InsertShowingRequest,
+  ScheduledShowing,
+  InsertScheduledShowing
+} from "@shared/schema";
 
 export const api = {
   // Properties
@@ -62,5 +73,48 @@ export const api = {
       monthlyRevenue: string;
     }> =>
       fetch("/api/dashboard/stats", { credentials: "include" }).then(res => res.json())
+  },
+
+  // Agent Schedules
+  schedules: {
+    getAll: (propertyId?: number): Promise<AgentSchedule[]> => {
+      const url = propertyId ? `/api/schedules?propertyId=${propertyId}` : "/api/schedules";
+      return fetch(url, { credentials: "include" }).then(res => res.json());
+    },
+    
+    create: (schedule: InsertAgentSchedule): Promise<AgentSchedule> =>
+      apiRequest("POST", "/api/schedules", schedule).then(res => res.json()),
+      
+    processVoiceCommand: (transcript: string, propertyId?: number): Promise<{
+      message: string;
+      transcript: string;
+      schedules: AgentSchedule[];
+    }> =>
+      apiRequest("POST", "/api/voice-schedule", { transcript, propertyId }).then(res => res.json())
+  },
+
+  // Showing Requests
+  showingRequests: {
+    getAll: (propertyId?: number): Promise<ShowingRequest[]> => {
+      const url = propertyId ? `/api/showing-requests?propertyId=${propertyId}` : "/api/showing-requests";
+      return fetch(url, { credentials: "include" }).then(res => res.json());
+    },
+    
+    create: (request: InsertShowingRequest): Promise<ShowingRequest> =>
+      apiRequest("POST", "/api/showing-requests", request).then(res => res.json())
+  },
+
+  // Scheduled Showings
+  showings: {
+    getAll: (propertyId?: number): Promise<ScheduledShowing[]> => {
+      const url = propertyId ? `/api/showings?propertyId=${propertyId}` : "/api/showings";
+      return fetch(url, { credentials: "include" }).then(res => res.json());
+    },
+    
+    create: (showing: InsertScheduledShowing): Promise<ScheduledShowing> =>
+      apiRequest("POST", "/api/showings", showing).then(res => res.json()),
+      
+    getPopularTimes: (propertyId: number): Promise<{ time: string; count: number; date: string }[]> =>
+      fetch(`/api/properties/${propertyId}/popular-times`, { credentials: "include" }).then(res => res.json())
   }
 };
