@@ -7,6 +7,9 @@ import {
   insertAgentScheduleSchema,
   insertShowingRequestSchema,
   insertScheduledShowingSchema,
+  insertFeedbackSessionSchema,
+  insertFeedbackResponseSchema,
+  insertUserProfileSchema,
   type InsertProperty,
   type Property,
   type InsertLead,
@@ -16,7 +19,13 @@ import {
   type InsertShowingRequest,
   type ShowingRequest,
   type InsertScheduledShowing,
-  type ScheduledShowing
+  type ScheduledShowing,
+  type InsertFeedbackSession,
+  type FeedbackSession,
+  type InsertFeedbackResponse,
+  type FeedbackResponse,
+  type InsertUserProfile,
+  type UserProfile
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
