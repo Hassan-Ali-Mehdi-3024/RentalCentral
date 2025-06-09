@@ -273,8 +273,7 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
         sessionId,
         questionText: currentQuestion.text,
         responseText: currentResponse,
-        responseMethod,
-        questionIndex: currentQuestionIndex
+        responseMethod
       });
 
       const newResponses = [...responses, currentResponse];

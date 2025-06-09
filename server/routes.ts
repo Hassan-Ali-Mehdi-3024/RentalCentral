@@ -429,6 +429,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/feedback/sessions", async (req, res) => {
+    try {
+      const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
+      const sessions = await storage.getFeedbackSessions(leadId);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
   app.get("/api/feedback/sessions/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -444,6 +454,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/feedback/sessions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      const session = await storage.updateFeedbackSession(id, updates);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update session" });
+    }
+  });
+
   // Feedback Responses routes
   app.post("/api/feedback/responses", async (req, res) => {
     try {
@@ -456,6 +482,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to create feedback response" });
       }
+    }
+  });
+
+  // AI Question Generation with OpenAI
+  app.post("/api/feedback/generate-questions", async (req, res) => {
+    try {
+      const { sessionType, leadId, propertyId, previousResponses, currentQuestionIndex } = req.body;
+      
+      // Use OpenAI to generate intelligent follow-up questions
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ error: "OpenAI API key not configured" });
+      }
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const systemPrompt = sessionType === 'discovery' 
+        ? `You are an AI assistant helping with lead discovery questions for a real estate property. Generate short, concise questions (max 10 words) that help understand what the prospect is looking for. Focus on preferences, timeline, budget, and interest level. Always ask about pricing if interest seems unclear.`
+        : `You are an AI assistant helping with post-tour feedback for a real estate property. Generate short, concise questions (max 10 words) that gather feedback about the tour experience. Always ask about pricing willingness and move-in timeline if responses are unclear.`;
+
+      const userPrompt = `Previous responses: ${previousResponses.join(', ')}. Generate 1-2 follow-up questions as JSON array with format: [{"text": "question", "type": "pricing|timeline|interest|preference|open", "responseOptions": ["option1", "option2"], "emojiOptions": ["😀", "🤔"]}]`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const result = JSON.parse(completion.choices[0].message.content || '{"questions": []}');
+      res.json({ questions: result.questions || [] });
+    } catch (error) {
+      console.error('OpenAI API error:', error);
+      res.status(500).json({ error: "Failed to generate questions", questions: [] });
     }
   });
 
