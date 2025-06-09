@@ -111,7 +111,7 @@ export function FileUpload() {
           onClick={handleFileSelect}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
             isDragOver 
-              ? 'border-primary bg-primary/5' 
+              ? 'border-primary bg-blue-50' 
               : 'border-gray-300 hover:border-primary'
           }`}
         >

@@ -70,7 +70,13 @@ export class MemStorage implements IStorage {
     ];
 
     sampleProperties.forEach(prop => {
-      const property: Property = { ...prop, id: this.currentPropertyId++ };
+      const property: Property = { 
+        ...prop, 
+        id: this.currentPropertyId++,
+        imageUrl: prop.imageUrl || null,
+        description: prop.description || null,
+        available: prop.available ?? true
+      };
       this.properties.set(property.id, property);
     });
 
@@ -133,7 +139,15 @@ export class MemStorage implements IStorage {
     ];
 
     sampleLeads.forEach(lead => {
-      const newLead: Lead = { ...lead, id: this.currentLeadId++ };
+      const newLead: Lead = { 
+        ...lead, 
+        id: this.currentLeadId++,
+        source: lead.source || null,
+        status: lead.status || "new",
+        phone: lead.phone || null,
+        preferences: lead.preferences || null,
+        propertyId: lead.propertyId || null
+      };
       this.leads.set(newLead.id, newLead);
     });
   }
@@ -148,7 +162,13 @@ export class MemStorage implements IStorage {
 
   async createProperty(insertProperty: InsertProperty): Promise<Property> {
     const id = this.currentPropertyId++;
-    const property: Property = { ...insertProperty, id };
+    const property: Property = { 
+      ...insertProperty, 
+      id,
+      imageUrl: insertProperty.imageUrl || null,
+      description: insertProperty.description || null,
+      available: insertProperty.available ?? true
+    };
     this.properties.set(id, property);
     return property;
   }
@@ -176,7 +196,15 @@ export class MemStorage implements IStorage {
 
   async createLead(insertLead: InsertLead): Promise<Lead> {
     const id = this.currentLeadId++;
-    const lead: Lead = { ...insertLead, id };
+    const lead: Lead = { 
+      ...insertLead, 
+      id,
+      status: insertLead.status || "new",
+      phone: insertLead.phone || null,
+      source: insertLead.source || null,
+      preferences: insertLead.preferences || null,
+      propertyId: insertLead.propertyId || null
+    };
     this.leads.set(id, lead);
     return lead;
   }

@@ -98,7 +98,8 @@
   }
   
   .drop-zone.drag-over {
-    @apply border-primary bg-primary/5;
+    @apply border-primary;
+    background-color: hsl(var(--primary) / 0.1);
   }
   
   .sidebar-nav-item {
