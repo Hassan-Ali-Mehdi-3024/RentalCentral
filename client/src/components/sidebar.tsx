@@ -1,4 +1,4 @@
-import { Building, Home, Users, Upload, BarChart3 } from "lucide-react";
+import { Building, Home, Users, Upload, BarChart3, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -6,8 +6,8 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Properties", href: "/properties", icon: Building },
   { name: "Leads", href: "/leads", icon: Users },
+  { name: "Scheduling", href: "/scheduling", icon: Calendar },
   { name: "Import", href: "/import", icon: Upload },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 
 export function Sidebar() {

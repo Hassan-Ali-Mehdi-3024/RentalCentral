@@ -6,10 +6,21 @@ import {
   insertLeadSchema,
   insertAgentScheduleSchema,
   insertShowingRequestSchema,
-  insertScheduledShowingSchema
+  insertScheduledShowingSchema,
+  type InsertProperty,
+  type Property,
+  type InsertLead,
+  type Lead,
+  type InsertAgentSchedule,
+  type AgentSchedule,
+  type InsertShowingRequest,
+  type ShowingRequest,
+  type InsertScheduledShowing,
+  type ScheduledShowing
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
+import OpenAI from "openai";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;

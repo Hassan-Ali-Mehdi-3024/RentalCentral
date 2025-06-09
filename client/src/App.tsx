@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import Dashboard from "@/pages/dashboard";
 import Properties from "@/pages/properties";
 import Leads from "@/pages/leads";
+import Scheduling from "@/pages/scheduling";
 import Import from "@/pages/import";
 import NotFound from "@/pages/not-found";
 
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/properties" component={Properties} />
       <Route path="/leads" component={Leads} />
+      <Route path="/scheduling" component={Scheduling} />
       <Route path="/import" component={Import} />
       <Route component={NotFound} />
     </Switch>
