@@ -1,4 +1,20 @@
-import { properties, leads, type Property, type Lead, type InsertProperty, type InsertLead } from "@shared/schema";
+import { 
+  properties, 
+  leads, 
+  agentSchedules,
+  showingRequests,
+  scheduledShowings,
+  type Property, 
+  type Lead, 
+  type InsertProperty, 
+  type InsertLead,
+  type AgentSchedule,
+  type InsertAgentSchedule,
+  type ShowingRequest,
+  type InsertShowingRequest,
+  type ScheduledShowing,
+  type InsertScheduledShowing
+} from "@shared/schema";
 
 export interface IStorage {
   // Properties
@@ -19,19 +35,49 @@ export interface IStorage {
   
   // Bulk operations
   createProperties(properties: InsertProperty[]): Promise<Property[]>;
+  
+  // Agent Schedules
+  getAgentSchedules(propertyId?: number): Promise<AgentSchedule[]>;
+  createAgentSchedule(schedule: InsertAgentSchedule): Promise<AgentSchedule>;
+  updateAgentSchedule(id: number, updates: Partial<InsertAgentSchedule>): Promise<AgentSchedule | undefined>;
+  deleteAgentSchedule(id: number): Promise<boolean>;
+  
+  // Showing Requests
+  getShowingRequests(propertyId?: number): Promise<ShowingRequest[]>;
+  createShowingRequest(request: InsertShowingRequest): Promise<ShowingRequest>;
+  updateShowingRequest(id: number, updates: Partial<InsertShowingRequest>): Promise<ShowingRequest | undefined>;
+  getPopularShowingTimes(propertyId: number): Promise<{ time: string; count: number; date: string }[]>;
+  
+  // Scheduled Showings
+  getScheduledShowings(propertyId?: number): Promise<ScheduledShowing[]>;
+  createScheduledShowing(showing: InsertScheduledShowing): Promise<ScheduledShowing>;
+  updateScheduledShowing(id: number, updates: Partial<InsertScheduledShowing>): Promise<ScheduledShowing | undefined>;
+  deleteScheduledShowing(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private properties: Map<number, Property>;
   private leads: Map<number, Lead>;
+  private agentSchedules: Map<number, AgentSchedule>;
+  private showingRequests: Map<number, ShowingRequest>;
+  private scheduledShowings: Map<number, ScheduledShowing>;
   private currentPropertyId: number;
   private currentLeadId: number;
+  private currentScheduleId: number;
+  private currentRequestId: number;
+  private currentShowingId: number;
 
   constructor() {
     this.properties = new Map();
     this.leads = new Map();
+    this.agentSchedules = new Map();
+    this.showingRequests = new Map();
+    this.scheduledShowings = new Map();
     this.currentPropertyId = 1;
     this.currentLeadId = 1;
+    this.currentScheduleId = 1;
+    this.currentRequestId = 1;
+    this.currentShowingId = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -244,6 +290,126 @@ export class MemStorage implements IStorage {
     }
     
     return createdProperties;
+  }
+
+  // Agent Schedules
+  async getAgentSchedules(propertyId?: number): Promise<AgentSchedule[]> {
+    const schedules = Array.from(this.agentSchedules.values());
+    return propertyId 
+      ? schedules.filter(schedule => schedule.propertyId === propertyId)
+      : schedules;
+  }
+
+  async createAgentSchedule(insertSchedule: InsertAgentSchedule): Promise<AgentSchedule> {
+    const id = this.currentScheduleId++;
+    const schedule: AgentSchedule = { 
+      ...insertSchedule, 
+      id,
+      isActive: insertSchedule.isActive ?? true
+    };
+    this.agentSchedules.set(id, schedule);
+    return schedule;
+  }
+
+  async updateAgentSchedule(id: number, updates: Partial<InsertAgentSchedule>): Promise<AgentSchedule | undefined> {
+    const schedule = this.agentSchedules.get(id);
+    if (!schedule) return undefined;
+    
+    const updatedSchedule = { ...schedule, ...updates };
+    this.agentSchedules.set(id, updatedSchedule);
+    return updatedSchedule;
+  }
+
+  async deleteAgentSchedule(id: number): Promise<boolean> {
+    return this.agentSchedules.delete(id);
+  }
+
+  // Showing Requests
+  async getShowingRequests(propertyId?: number): Promise<ShowingRequest[]> {
+    const requests = Array.from(this.showingRequests.values());
+    return propertyId 
+      ? requests.filter(request => request.propertyId === propertyId)
+      : requests;
+  }
+
+  async createShowingRequest(insertRequest: InsertShowingRequest): Promise<ShowingRequest> {
+    const id = this.currentRequestId++;
+    const request: ShowingRequest = { 
+      ...insertRequest, 
+      id,
+      status: insertRequest.status || "pending",
+      createdAt: new Date()
+    };
+    this.showingRequests.set(id, request);
+    return request;
+  }
+
+  async updateShowingRequest(id: number, updates: Partial<InsertShowingRequest>): Promise<ShowingRequest | undefined> {
+    const request = this.showingRequests.get(id);
+    if (!request) return undefined;
+    
+    const updatedRequest = { ...request, ...updates };
+    this.showingRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
+
+  async getPopularShowingTimes(propertyId: number): Promise<{ time: string; count: number; date: string }[]> {
+    const requests = Array.from(this.showingRequests.values())
+      .filter(request => request.propertyId === propertyId && request.status === "pending");
+    
+    const timeMap = new Map<string, { count: number; dates: Set<string> }>();
+    
+    requests.forEach(request => {
+      const key = request.requestedTime;
+      if (!timeMap.has(key)) {
+        timeMap.set(key, { count: 0, dates: new Set() });
+      }
+      const entry = timeMap.get(key)!;
+      entry.count++;
+      entry.dates.add(request.requestedDate);
+    });
+
+    return Array.from(timeMap.entries())
+      .map(([time, data]) => ({
+        time,
+        count: data.count,
+        date: Array.from(data.dates)[0] // Most common date for this time
+      }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  // Scheduled Showings
+  async getScheduledShowings(propertyId?: number): Promise<ScheduledShowing[]> {
+    const showings = Array.from(this.scheduledShowings.values());
+    return propertyId 
+      ? showings.filter(showing => showing.propertyId === propertyId)
+      : showings;
+  }
+
+  async createScheduledShowing(insertShowing: InsertScheduledShowing): Promise<ScheduledShowing> {
+    const id = this.currentShowingId++;
+    const showing: ScheduledShowing = { 
+      ...insertShowing, 
+      id,
+      duration: insertShowing.duration || 30,
+      status: insertShowing.status || "scheduled",
+      createdAt: new Date()
+    };
+    this.scheduledShowings.set(id, showing);
+    return showing;
+  }
+
+  async updateScheduledShowing(id: number, updates: Partial<InsertScheduledShowing>): Promise<ScheduledShowing | undefined> {
+    const showing = this.scheduledShowings.get(id);
+    if (!showing) return undefined;
+    
+    const updatedShowing = { ...showing, ...updates };
+    this.scheduledShowings.set(id, updatedShowing);
+    return updatedShowing;
+  }
+
+  async deleteScheduledShowing(id: number): Promise<boolean> {
+    return this.scheduledShowings.delete(id);
   }
 }
 

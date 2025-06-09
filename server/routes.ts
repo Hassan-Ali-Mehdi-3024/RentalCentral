@@ -1,7 +1,13 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPropertySchema, insertLeadSchema } from "@shared/schema";
+import { 
+  insertPropertySchema, 
+  insertLeadSchema,
+  insertAgentScheduleSchema,
+  insertShowingRequestSchema,
+  insertScheduledShowingSchema
+} from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 
