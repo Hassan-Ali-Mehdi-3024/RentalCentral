@@ -10,6 +10,7 @@ import Leads from "@/pages/leads";
 import Scheduling from "@/pages/scheduling";
 import Feedback from "@/pages/feedback";
 import Performance from "@/pages/performance";
+import Profile from "@/pages/profile";
 import Import from "@/pages/import";
 import NotFound from "@/pages/not-found";
 
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/scheduling" component={Scheduling} />
       <Route path="/feedback" component={Feedback} />
       <Route path="/performance" component={Performance} />
+      <Route path="/profile" component={Profile} />
       <Route path="/import" component={Import} />
       <Route component={NotFound} />
     </Switch>

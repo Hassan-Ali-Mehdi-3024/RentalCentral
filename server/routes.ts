@@ -662,6 +662,60 @@ If you've gathered sufficient feedback, set completed: true.`;
     }
   });
 
+  // Profile routes
+  app.get("/api/profile", async (req, res) => {
+    try {
+      // For demo purposes, using a default user ID
+      const userId = "demo-user-123";
+      const profile = await storage.getUserProfile(userId);
+      
+      if (!profile) {
+        // Create a default profile if none exists
+        const defaultProfile = {
+          userId,
+          isLicensedAgent: false,
+          firstName: "Demo",
+          lastName: "User",
+          email: "demo@example.com"
+        };
+        const newProfile = await storage.createUserProfile(defaultProfile);
+        return res.json(newProfile);
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Error getting profile:", error);
+      res.status(500).json({ error: "Failed to get profile" });
+    }
+  });
+
+  app.post("/api/profile", async (req, res) => {
+    try {
+      const profile = await storage.createUserProfile(req.body);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error creating profile:", error);
+      res.status(500).json({ error: "Failed to create profile" });
+    }
+  });
+
+  app.put("/api/profile", async (req, res) => {
+    try {
+      // For demo purposes, using a default user ID
+      const userId = "demo-user-123";
+      const profile = await storage.updateUserProfile(userId, req.body);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

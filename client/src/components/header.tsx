@@ -1,7 +1,9 @@
-import { Search, Bell, User } from "lucide-react";
+import { Search, Bell } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ProfileDropdown } from "@/components/profile-dropdown";
+import { useLocation } from "wouter";
 
 interface HeaderProps {
   title: string;
@@ -9,6 +11,12 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const [, setLocation] = useLocation();
+
+  const handleProfileClick = () => {
+    setLocation("/profile");
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -38,13 +46,8 @@ export function Header({ title, subtitle }: HeaderProps) {
             </Badge>
           </Button>
           
-          {/* Profile */}
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <User className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-medium text-foreground">John Manager</span>
-          </div>
+          {/* Profile Dropdown */}
+          <ProfileDropdown onProfileClick={handleProfileClick} />
         </div>
       </div>
     </header>
