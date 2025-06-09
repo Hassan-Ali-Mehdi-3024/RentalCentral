@@ -146,5 +146,20 @@ export const api = {
     
     getResponses: (sessionId: number): Promise<any[]> =>
       fetch(`/api/feedback/sessions/${sessionId}/responses`, { credentials: "include" }).then(res => res.json())
+  },
+
+  // Performance Analytics
+  performance: {
+    getPropertyPerformance: (propertyId: number): Promise<{
+      property: any;
+      prospects: any[];
+      inquiries: any[];
+      metrics: any;
+      feedbackCategories: any[];
+    }> =>
+      fetch(`/api/performance/property/${propertyId}`, { credentials: "include" }).then(res => res.json()),
+      
+    updateSummary: (data: { propertyId: number; category: string; summary: string }): Promise<any> =>
+      apiRequest("PUT", "/api/performance/summary", data).then(res => res.json())
   }
 };

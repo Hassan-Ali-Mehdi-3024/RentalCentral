@@ -107,6 +107,7 @@ export class MemStorage implements IStorage {
     
     // Initialize with sample data
     this.initializeSampleData();
+    this.initializeSampleFeedbackData();
   }
 
   private initializeSampleData() {
@@ -496,6 +497,60 @@ export class MemStorage implements IStorage {
     };
     this.leadInteractions.set(interaction.id, interaction);
     return interaction;
+  }
+
+  private initializeSampleFeedbackData() {
+    // Create sample feedback sessions for demonstration
+    const sampleSessions = [
+      {
+        id: 1,
+        leadId: 1,
+        propertyId: 1,
+        sessionType: "post_tour",
+        status: "completed",
+        currentQuestionIndex: 5,
+        preferredResponseMethod: "text",
+        discoveredBudget: 2800,
+        proposedMoveInDate: "2024-02-15",
+        interestLevel: 9,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      },
+      {
+        id: 2,
+        leadId: 2,
+        propertyId: 1,
+        sessionType: "discovery",
+        status: "completed",
+        currentQuestionIndex: 4,
+        preferredResponseMethod: "voice",
+        discoveredBudget: 2600,
+        proposedMoveInDate: "2024-03-01",
+        interestLevel: 7,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      },
+      {
+        id: 3,
+        leadId: 3,
+        propertyId: 1,
+        sessionType: "post_tour",
+        status: "completed",
+        currentQuestionIndex: 6,
+        preferredResponseMethod: "text",
+        discoveredBudget: 3000,
+        proposedMoveInDate: "2024-01-30",
+        interestLevel: 8,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      }
+    ];
+
+    sampleSessions.forEach(session => {
+      this.feedbackSessions.set(session.id, session);
+    });
+
+    this.currentFeedbackSessionId = 4;
   }
 }
 
