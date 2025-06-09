@@ -549,45 +549,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to generate initial questions
-  async function generateInitialQuestions(sessionType: string, lead: any, property: any) {
-    const prompt = sessionType === "discovery" 
-      ? `Generate 1-2 initial discovery questions for a new rental lead. The lead is ${lead?.name} interested in ${property?.name}. Focus on understanding their needs, timeline, and budget preferences. Return JSON with: {questions: [{id: string, text: string, type: "open"|"budget"|"move_in_date", options?: string[], emoji_options?: string[]}]}`
-      : `Generate 1-2 initial post-tour feedback questions for a rental prospect who just toured ${property?.name}. Focus on their impressions and interest level. Return JSON with: {questions: [{id: string, text: string, type: "open"|"interest_level", options?: string[], emoji_options?: string[]}]}`;
-
+  // Schedule post-tour survey endpoint
+  app.post("/api/feedback/schedule-post-tour", async (req, res) => {
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are a property management assistant specializing in lead qualification and feedback collection. Generate engaging, conversational questions that feel natural and encourage detailed responses."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" }
+      const { leadId, propertyId, email, phone, delayMinutes = 60 } = req.body;
+      
+      if (!leadId || !propertyId) {
+        return res.status(400).json({ error: "Lead ID and Property ID are required" });
+      }
+
+      if (!email && !phone) {
+        return res.status(400).json({ error: "Email or phone number is required" });
+      }
+
+      // Create a scheduled survey record (in a real app, this would use a job queue)
+      const scheduledTime = new Date(Date.now() + delayMinutes * 60 * 1000);
+      
+      // For demonstration, we'll create a feedback session immediately but mark it as scheduled
+      const session = await storage.createFeedbackSession({
+        leadId,
+        propertyId,
+        sessionType: "post_tour",
+        status: "scheduled",
+        currentQuestionIndex: 0,
+        preferredResponseMethod: email ? "email" : "sms"
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{"questions": []}');
-      return result.questions || [];
+      // In a real implementation, you would:
+      // 1. Add to a job queue (Redis/Bull/etc.)
+      // 2. Schedule email via SendGrid with delay
+      // 3. Schedule SMS via Twilio with delay
+      
+      console.log(`Post-tour survey scheduled for lead ${leadId} at ${scheduledTime.toISOString()}`);
+      console.log(`Survey will be sent to: ${email ? `email: ${email}` : ''} ${phone ? `phone: ${phone}` : ''}`);
+
+      res.json({
+        success: true,
+        sessionId: session.id,
+        scheduledFor: scheduledTime.toISOString(),
+        deliveryMethods: {
+          email: !!email,
+          sms: !!phone
+        }
+      });
     } catch (error) {
-      console.error('AI question generation error:', error);
-      // Fallback questions
-      return sessionType === "discovery" 
-        ? [{
-            id: "initial_needs",
-            text: "Hi! I'd love to learn more about what you're looking for in your next home. Could you tell me about your ideal living situation?",
-            type: "open"
-          }]
-        : [{
-            id: "tour_impression",
-            text: "Thanks for touring with us today! What were your first impressions of the property?",
-            type: "open",
-            emoji_options: ["😍", "😊", "😐", "😕"]
-          }];
+      console.error('Schedule post-tour survey error:', error);
+      res.status(500).json({ error: "Failed to schedule post-tour survey" });
+    }
+  });
+
+  // Helper function to generate initial questions
+  async function generateInitialQuestions(sessionType: string, lead: any, property: any) {
+    // Always use standardized short questions to ensure consistency and pricing questions are included
+    if (sessionType === "post_tour") {
+      return [
+        { 
+          id: "Q1", 
+          text: "Rate your interest (1-10)?", 
+          type: "interest_level", 
+          options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] 
+        },
+        { 
+          id: "Q2", 
+          text: "What did you like most?", 
+          type: "open",
+          emoji_options: ["🏠", "🌟", "📍", "💰", "👥"]
+        },
+        { 
+          id: "Q3", 
+          text: "Any concerns?", 
+          type: "open",
+          emoji_options: ["😟", "💸", "🚗", "🔊", "🏗️"]
+        },
+        { 
+          id: "Q4", 
+          text: "Ideal move-in date?", 
+          type: "move_in_date", 
+          options: ["ASAP", "Within 2 weeks", "Within 30 days", "Within 60 days", "Not sure"] 
+        },
+        { 
+          id: "Q5", 
+          text: "What monthly rent would make you apply?", 
+          type: "budget" 
+        },
+        { 
+          id: "Q6", 
+          text: "Any questions for us?", 
+          type: "open",
+          emoji_options: ["❓", "📋", "🏠", "💰", "📞"]
+        }
+      ];
+    } else {
+      return [
+        { 
+          id: "Q1", 
+          text: "Why are you looking for a new place?", 
+          type: "open",
+          emoji_options: ["🏠", "💼", "👨‍👩‍👧‍👦", "🎓", "💔"]
+        },
+        { 
+          id: "Q2", 
+          text: "When do you need to move?", 
+          type: "move_in_date", 
+          options: ["ASAP", "Within 30 days", "Within 60 days", "Within 90 days", "Flexible"] 
+        },
+        { 
+          id: "Q3", 
+          text: "What's your monthly budget?", 
+          type: "budget" 
+        },
+        { 
+          id: "Q4", 
+          text: "Most important features?", 
+          type: "open",
+          emoji_options: ["🚗", "🏊‍♂️", "🐕", "🏋️‍♀️", "🌳"]
+        },
+        { 
+          id: "Q5", 
+          text: "At what price would you apply today?", 
+          type: "budget" 
+        }
+      ];
     }
   }
 

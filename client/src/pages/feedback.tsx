@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Header } from "@/components/header";
 import { FeedbackQuestionnaire } from "@/components/feedback-questionnaire";
+import { PostTourScheduler } from "@/components/post-tour-scheduler";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, Users, TrendingUp, Calendar } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Clock, MessageSquare, Mail, Phone, Users, TrendingUp, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function Feedback() {
@@ -211,6 +213,30 @@ export default function Feedback() {
             </CardContent>
           </Card>
 
+          {/* Post-Tour Survey Scheduler */}
+          {selectedLeadId && selectedPropertyId && sessionType === "post_tour" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Automated Post-Tour Survey</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Schedule automated feedback survey to be sent 1 hour after tour completion
+                </p>
+              </CardHeader>
+              <CardContent>
+                <PostTourScheduler
+                  leadId={selectedLeadId}
+                  propertyId={selectedPropertyId}
+                  leadEmail={leads.find(l => l.id === selectedLeadId)?.email}
+                  leadPhone={leads.find(l => l.id === selectedLeadId)?.phone}
+                  onScheduled={() => {
+                    setSelectedLeadId(undefined);
+                    setSelectedPropertyId(undefined);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recent Sessions */}
           <Card>
             <CardHeader>
@@ -224,14 +250,16 @@ export default function Feedback() {
                       <div className="flex items-center space-x-3">
                         <div className={`w-3 h-3 rounded-full ${
                           session.status === "completed" ? "bg-green-500" : 
-                          session.status === "active" ? "bg-blue-500" : "bg-gray-400"
+                          session.status === "active" ? "bg-blue-500" : 
+                          session.status === "scheduled" ? "bg-orange-500" : "bg-gray-400"
                         }`}></div>
                         <div>
                           <p className="font-medium text-foreground">
                             Lead #{session.leadId} - {session.sessionType === "discovery" ? "Discovery" : "Post-Tour"}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {session.status === "completed" ? "Completed" : "In Progress"} • 
+                            {session.status === "completed" ? "Completed" : 
+                             session.status === "scheduled" ? "Scheduled" : "In Progress"} • 
                             {session.interestLevel && ` Interest: ${session.interestLevel}/10`}
                           </p>
                         </div>
