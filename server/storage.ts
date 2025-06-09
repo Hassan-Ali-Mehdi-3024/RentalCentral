@@ -19,7 +19,9 @@ import {
   type FeedbackSession,
   type InsertFeedbackSession,
   type FeedbackResponse,
-  type InsertFeedbackResponse
+  type InsertFeedbackResponse,
+  type UserProfile,
+  type InsertUserProfile
 } from "@shared/schema";
 
 export interface IStorage {
@@ -102,6 +104,7 @@ export class MemStorage implements IStorage {
     this.scheduledShowings = new Map();
     this.feedbackSessions = new Map();
     this.feedbackResponses = new Map();
+    this.userProfiles = new Map();
     this.currentPropertyId = 1;
     this.currentLeadId = 1;
     this.currentScheduleId = 1;
@@ -109,6 +112,7 @@ export class MemStorage implements IStorage {
     this.currentShowingId = 1;
     this.currentFeedbackSessionId = 1;
     this.currentFeedbackResponseId = 1;
+    this.currentUserProfileId = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -489,11 +493,68 @@ export class MemStorage implements IStorage {
   async createFeedbackResponse(insertResponse: InsertFeedbackResponse): Promise<FeedbackResponse> {
     const response: FeedbackResponse = {
       id: this.currentFeedbackResponseId++,
-      ...insertResponse,
-      createdAt: new Date()
+      sessionId: insertResponse.sessionId,
+      questionText: insertResponse.questionText,
+      responseText: insertResponse.responseText || null,
+      responseMethod: insertResponse.responseMethod,
+      aiGeneratedQuestion: insertResponse.aiGeneratedQuestion || false,
+      metadata: insertResponse.metadata || null,
+      createdAt: new Date(),
     };
     this.feedbackResponses.set(response.id, response);
     return response;
+  }
+
+  // User Profile methods
+  async getUserProfile(userId: string): Promise<UserProfile | undefined> {
+    return this.userProfiles.get(userId);
+  }
+
+  async createUserProfile(insertProfile: InsertUserProfile): Promise<UserProfile> {
+    const profile: UserProfile = {
+      id: this.currentUserProfileId++,
+      userId: insertProfile.userId,
+      isLicensedAgent: insertProfile.isLicensedAgent,
+      firstName: insertProfile.firstName,
+      lastName: insertProfile.lastName,
+      email: insertProfile.email,
+      phone: insertProfile.phone || null,
+      profileImageUrl: insertProfile.profileImageUrl || null,
+      licenseNumber: insertProfile.licenseNumber || null,
+      licenseState: insertProfile.licenseState || null,
+      licenseExpiration: insertProfile.licenseExpiration || null,
+      brokerageName: insertProfile.brokerageName || null,
+      brokerageAddress: insertProfile.brokerageAddress || null,
+      brokeragePhone: insertProfile.brokeragePhone || null,
+      yearsExperience: insertProfile.yearsExperience || null,
+      specialties: insertProfile.specialties || null,
+      companyName: insertProfile.companyName || null,
+      businessAddress: insertProfile.businessAddress || null,
+      numberOfProperties: insertProfile.numberOfProperties || null,
+      propertyTypes: insertProfile.propertyTypes || null,
+      bio: insertProfile.bio || null,
+      website: insertProfile.website || null,
+      socialMediaLinks: insertProfile.socialMediaLinks || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.userProfiles.set(profile.userId, profile);
+    return profile;
+  }
+
+  async updateUserProfile(userId: string, updates: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
+    const existingProfile = this.userProfiles.get(userId);
+    if (!existingProfile) return undefined;
+    
+    const updatedProfile: UserProfile = {
+      ...existingProfile,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    
+    this.userProfiles.set(userId, updatedProfile);
+    return updatedProfile;
   }
 }
 
