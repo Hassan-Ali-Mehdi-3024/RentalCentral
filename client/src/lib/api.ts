@@ -116,5 +116,35 @@ export const api = {
       
     getPopularTimes: (propertyId: number): Promise<{ time: string; count: number; date: string }[]> =>
       fetch(`/api/properties/${propertyId}/popular-times`, { credentials: "include" }).then(res => res.json())
+  },
+
+  // Feedback System
+  feedback: {
+    startSession: (data: { leadId: number; propertyId: number; sessionType: string }): Promise<{
+      sessionId: number;
+      initialQuestions: any[];
+    }> =>
+      apiRequest("POST", "/api/feedback/start-session", data).then(res => res.json()),
+      
+    submitResponse: (data: {
+      sessionId: number;
+      questionId: string;
+      responseMethod: string;
+      responseValue: string;
+      responseText?: string;
+    }): Promise<{
+      nextQuestion?: any;
+      isComplete?: boolean;
+      summary?: any;
+    }> =>
+      apiRequest("POST", "/api/feedback/submit-response", data).then(res => res.json()),
+      
+    getSessions: (leadId?: number): Promise<any[]> => {
+      const url = leadId ? `/api/feedback/sessions?leadId=${leadId}` : "/api/feedback/sessions";
+      return fetch(url, { credentials: "include" }).then(res => res.json());
+    },
+    
+    getResponses: (sessionId: number): Promise<any[]> =>
+      fetch(`/api/feedback/sessions/${sessionId}/responses`, { credentials: "include" }).then(res => res.json())
   }
 };

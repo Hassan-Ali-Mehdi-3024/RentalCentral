@@ -7,6 +7,9 @@ import {
   insertAgentScheduleSchema,
   insertShowingRequestSchema,
   insertScheduledShowingSchema,
+  insertFeedbackSessionSchema,
+  insertFeedbackResponseSchema,
+  insertLeadInteractionSchema,
   type InsertProperty,
   type Property,
   type InsertLead,
@@ -16,7 +19,13 @@ import {
   type InsertShowingRequest,
   type ShowingRequest,
   type InsertScheduledShowing,
-  type ScheduledShowing
+  type ScheduledShowing,
+  type FeedbackSession,
+  type InsertFeedbackSession,
+  type FeedbackResponse,
+  type InsertFeedbackResponse,
+  type LeadInteraction,
+  type InsertLeadInteraction
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -404,6 +413,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch popular times" });
     }
   });
+
+  // AI-Powered Feedback System Routes
+  app.post("/api/feedback/start-session", async (req, res) => {
+    try {
+      const { leadId, propertyId, sessionType } = req.body;
+      
+      if (!leadId || !propertyId || !sessionType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Create feedback session
+      const session = await storage.createFeedbackSession({
+        leadId,
+        propertyId,
+        sessionType,
+        status: "active",
+        currentQuestionIndex: 0
+      });
+
+      // Generate initial questions using AI
+      const lead = await storage.getLead(leadId);
+      const property = await storage.getProperty(propertyId);
+      
+      const initialQuestions = await generateInitialQuestions(sessionType, lead, property);
+      
+      // Log interaction
+      await storage.createLeadInteraction({
+        leadId,
+        interactionType: "feedback_started",
+        description: `Started ${sessionType} feedback session for ${property?.name}`,
+        metadata: JSON.stringify({ sessionId: session.id, sessionType })
+      });
+
+      res.json({
+        sessionId: session.id,
+        initialQuestions
+      });
+    } catch (error) {
+      console.error('Start session error:', error);
+      res.status(500).json({ error: "Failed to start feedback session" });
+    }
+  });
+
+  app.post("/api/feedback/submit-response", async (req, res) => {
+    try {
+      const { sessionId, questionId, responseMethod, responseValue, responseText } = req.body;
+      
+      if (!sessionId || !questionId || !responseMethod || !responseValue) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const session = await storage.getFeedbackSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      // Save response
+      const response = await storage.createFeedbackResponse({
+        sessionId,
+        questionId,
+        questionText: "", // Will be populated by AI
+        responseMethod,
+        responseValue,
+        responseText
+      });
+
+      // Get all previous responses for context
+      const allResponses = await storage.getFeedbackResponses(sessionId);
+      const lead = await storage.getLead(session.leadId);
+      const property = await storage.getProperty(session.propertyId);
+
+      // Generate next question using AI
+      const aiResult = await generateNextQuestion(
+        session, 
+        allResponses, 
+        responseValue, 
+        lead, 
+        property
+      );
+
+      // Update session with discovered information
+      const sessionUpdates: Partial<InsertFeedbackSession> = {
+        currentQuestionIndex: session.currentQuestionIndex + 1
+      };
+
+      if (aiResult.discoveredBudget) {
+        sessionUpdates.discoveredBudget = aiResult.discoveredBudget;
+      }
+      if (aiResult.proposedMoveInDate) {
+        sessionUpdates.proposedMoveInDate = aiResult.proposedMoveInDate;
+      }
+      if (aiResult.interestLevel) {
+        sessionUpdates.interestLevel = aiResult.interestLevel;
+      }
+      if (aiResult.preferredResponseMethod) {
+        sessionUpdates.preferredResponseMethod = aiResult.preferredResponseMethod;
+      }
+
+      if (aiResult.isComplete) {
+        sessionUpdates.status = "completed";
+        sessionUpdates.completedAt = new Date().toISOString() as any;
+      }
+
+      await storage.updateFeedbackSession(sessionId, sessionUpdates);
+
+      res.json({
+        nextQuestion: aiResult.nextQuestion,
+        isComplete: aiResult.isComplete,
+        summary: aiResult.summary
+      });
+    } catch (error) {
+      console.error('Submit response error:', error);
+      res.status(500).json({ error: "Failed to submit response" });
+    }
+  });
+
+  app.get("/api/feedback/sessions", async (req, res) => {
+    try {
+      const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
+      const sessions = await storage.getFeedbackSessions(leadId);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch feedback sessions" });
+    }
+  });
+
+  app.get("/api/feedback/sessions/:sessionId/responses", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const responses = await storage.getFeedbackResponses(sessionId);
+      res.json(responses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch session responses" });
+    }
+  });
+
+  // Helper function to generate initial questions
+  async function generateInitialQuestions(sessionType: string, lead: any, property: any) {
+    const prompt = sessionType === "discovery" 
+      ? `Generate 1-2 initial discovery questions for a new rental lead. The lead is ${lead?.name} interested in ${property?.name}. Focus on understanding their needs, timeline, and budget preferences. Return JSON with: {questions: [{id: string, text: string, type: "open"|"budget"|"move_in_date", options?: string[], emoji_options?: string[]}]}`
+      : `Generate 1-2 initial post-tour feedback questions for a rental prospect who just toured ${property?.name}. Focus on their impressions and interest level. Return JSON with: {questions: [{id: string, text: string, type: "open"|"interest_level", options?: string[], emoji_options?: string[]}]}`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a property management assistant specializing in lead qualification and feedback collection. Generate engaging, conversational questions that feel natural and encourage detailed responses."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || '{"questions": []}');
+      return result.questions || [];
+    } catch (error) {
+      console.error('AI question generation error:', error);
+      // Fallback questions
+      return sessionType === "discovery" 
+        ? [{
+            id: "initial_needs",
+            text: "Hi! I'd love to learn more about what you're looking for in your next home. Could you tell me about your ideal living situation?",
+            type: "open"
+          }]
+        : [{
+            id: "tour_impression",
+            text: "Thanks for touring with us today! What were your first impressions of the property?",
+            type: "open",
+            emoji_options: ["😍", "😊", "😐", "😕"]
+          }];
+    }
+  }
+
+  // Helper function to generate next question based on response
+  async function generateNextQuestion(session: any, responses: any[], latestResponse: string, lead: any, property: any) {
+    const responseContext = responses.map(r => `Q: ${r.questionText} A: ${r.responseValue}`).join("\n");
+    
+    const prompt = `
+    Context: ${session.sessionType} session for ${property?.name} with lead ${lead?.name}
+    Previous responses: ${responseContext}
+    Latest response: ${latestResponse}
+    
+    Analyze the conversation and:
+    1. Determine if budget or move-in date info was revealed
+    2. Generate the next logical question that builds on their response
+    3. If they seem interested but haven't revealed budget/timeline, craft a question to discover this naturally
+    4. Decide if the session should continue or conclude
+    
+    Return JSON: {
+      "nextQuestion": {id: string, text: string, type: string, options?: string[], emoji_options?: string[]},
+      "discoveredBudget": number|null,
+      "proposedMoveInDate": "YYYY-MM-DD"|null,
+      "interestLevel": 1-10|null,
+      "isComplete": boolean,
+      "summary": string|null
+    }`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert at reading between the lines in prospect conversations. Extract key information like budget hints, timeline preferences, and interest levels. Generate follow-up questions that naturally uncover what the prospect would be willing to pay and when they'd like to move."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      return JSON.parse(response.choices[0].message.content || '{"nextQuestion": null, "isComplete": true}');
+    } catch (error) {
+      console.error('AI next question generation error:', error);
+      return {
+        nextQuestion: null,
+        isComplete: true,
+        summary: "Thank you for your feedback!"
+      };
+    }
+  }
 
   // Scheduled Showings routes
   app.get("/api/showings", async (req, res) => {
