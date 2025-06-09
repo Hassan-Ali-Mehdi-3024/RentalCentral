@@ -69,6 +69,11 @@ export interface IStorage {
   // Feedback Responses
   getFeedbackResponses(sessionId: number): Promise<FeedbackResponse[]>;
   createFeedbackResponse(response: InsertFeedbackResponse): Promise<FeedbackResponse>;
+  
+  // User Profiles
+  getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  updateUserProfile(userId: string, updates: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -79,6 +84,7 @@ export class MemStorage implements IStorage {
   private scheduledShowings: Map<number, ScheduledShowing>;
   private feedbackSessions: Map<number, FeedbackSession>;
   private feedbackResponses: Map<number, FeedbackResponse>;
+  private userProfiles: Map<string, UserProfile>;
   private currentPropertyId: number;
   private currentLeadId: number;
   private currentScheduleId: number;
@@ -86,6 +92,7 @@ export class MemStorage implements IStorage {
   private currentShowingId: number;
   private currentFeedbackSessionId: number;
   private currentFeedbackResponseId: number;
+  private currentUserProfileId: number;
 
   constructor() {
     this.properties = new Map();

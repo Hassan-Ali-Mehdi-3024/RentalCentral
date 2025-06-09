@@ -158,5 +158,17 @@ export const api = {
       dailyData: any[];
     }> =>
       fetch(`/api/performance/${propertyId}/inquiry-stats`, { credentials: "include" }).then(res => res.json())
+  },
+
+  // Profile API
+  profile: {
+    get: (): Promise<any> =>
+      fetch("/api/profile", { credentials: "include" }).then(res => res.json()),
+      
+    update: (profile: any): Promise<any> =>
+      apiRequest("PUT", "/api/profile", profile).then(res => res.json()),
+      
+    create: (profile: any): Promise<any> =>
+      apiRequest("POST", "/api/profile", profile).then(res => res.json())
   }
 };

@@ -97,6 +97,41 @@ export const feedbackSummaries = pgTable("feedback_summaries", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const userProfiles = pgTable("user_profiles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 100 }).notNull().unique(),
+  isLicensedAgent: boolean("is_licensed_agent").notNull(),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  profileImageUrl: varchar("profile_image_url", { length: 500 }),
+  
+  // Licensed Agent Fields
+  licenseNumber: varchar("license_number", { length: 50 }),
+  licenseState: varchar("license_state", { length: 2 }),
+  licenseExpiration: varchar("license_expiration", { length: 10 }), // YYYY-MM-DD
+  brokerageName: varchar("brokerage_name", { length: 200 }),
+  brokerageAddress: text("brokerage_address"),
+  brokeragePhone: varchar("brokerage_phone", { length: 20 }),
+  yearsExperience: integer("years_experience"),
+  specialties: text("specialties"), // JSON array of specialties
+  
+  // Property Owner Fields
+  companyName: varchar("company_name", { length: 200 }),
+  businessAddress: text("business_address"),
+  numberOfProperties: integer("number_of_properties"),
+  propertyTypes: text("property_types"), // JSON array of property types
+  
+  // Common Fields
+  bio: text("bio"),
+  website: varchar("website", { length: 255 }),
+  socialMediaLinks: text("social_media_links"), // JSON object
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
 });
@@ -141,6 +176,12 @@ export const insertFeedbackSummarySchema = createInsertSchema(feedbackSummaries)
   updatedAt: true,
 });
 
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
@@ -159,3 +200,5 @@ export type InsertPropertyPerformance = z.infer<typeof insertPropertyPerformance
 export type PropertyPerformance = typeof propertyPerformance.$inferSelect;
 export type InsertFeedbackSummary = z.infer<typeof insertFeedbackSummarySchema>;
 export type FeedbackSummary = typeof feedbackSummaries.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
