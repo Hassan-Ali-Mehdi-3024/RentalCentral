@@ -4,6 +4,8 @@ import {
   agentSchedules,
   showingRequests,
   scheduledShowings,
+  feedbackSessions,
+  feedbackResponses,
   type Property, 
   type Lead, 
   type InsertProperty, 
@@ -13,7 +15,11 @@ import {
   type ShowingRequest,
   type InsertShowingRequest,
   type ScheduledShowing,
-  type InsertScheduledShowing
+  type InsertScheduledShowing,
+  type FeedbackSession,
+  type InsertFeedbackSession,
+  type FeedbackResponse,
+  type InsertFeedbackResponse
 } from "@shared/schema";
 
 export interface IStorage {
@@ -53,6 +59,16 @@ export interface IStorage {
   createScheduledShowing(showing: InsertScheduledShowing): Promise<ScheduledShowing>;
   updateScheduledShowing(id: number, updates: Partial<InsertScheduledShowing>): Promise<ScheduledShowing | undefined>;
   deleteScheduledShowing(id: number): Promise<boolean>;
+  
+  // Feedback Sessions
+  getFeedbackSessions(leadId?: number): Promise<FeedbackSession[]>;
+  createFeedbackSession(session: InsertFeedbackSession): Promise<FeedbackSession>;
+  updateFeedbackSession(id: number, updates: Partial<InsertFeedbackSession>): Promise<FeedbackSession | undefined>;
+  getFeedbackSession(id: number): Promise<FeedbackSession | undefined>;
+  
+  // Feedback Responses
+  getFeedbackResponses(sessionId: number): Promise<FeedbackResponse[]>;
+  createFeedbackResponse(response: InsertFeedbackResponse): Promise<FeedbackResponse>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,11 +77,15 @@ export class MemStorage implements IStorage {
   private agentSchedules: Map<number, AgentSchedule>;
   private showingRequests: Map<number, ShowingRequest>;
   private scheduledShowings: Map<number, ScheduledShowing>;
+  private feedbackSessions: Map<number, FeedbackSession>;
+  private feedbackResponses: Map<number, FeedbackResponse>;
   private currentPropertyId: number;
   private currentLeadId: number;
   private currentScheduleId: number;
   private currentRequestId: number;
   private currentShowingId: number;
+  private currentFeedbackSessionId: number;
+  private currentFeedbackResponseId: number;
 
   constructor() {
     this.properties = new Map();
