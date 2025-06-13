@@ -45,6 +45,40 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY 
 });
 
+// Function to schedule post-tour feedback survey
+function schedulePostTourSurvey(showing: any) {
+  const showingDateTime = new Date(`${showing.showingDate}T${showing.showingTime}`);
+  const surveyTime = new Date(showingDateTime.getTime() + 60 * 60 * 1000); // Add 1 hour
+  
+  setTimeout(async () => {
+    try {
+      const lead = await storage.getLead(showing.leadId);
+      if (!lead) return;
+
+      const session = await storage.createFeedbackSession({
+        leadId: showing.leadId,
+        propertyId: showing.propertyId,
+        sessionType: 'post_tour',
+        status: 'active',
+        currentQuestionIndex: 0
+      });
+
+      await sendPostTourSurvey(lead, session.id, showing.propertyId);
+      console.log(`Post-tour survey sent to ${lead.name} for showing at ${showing.showingDate} ${showing.showingTime}`);
+    } catch (error) {
+      console.error('Failed to send post-tour survey:', error);
+    }
+  }, Math.max(0, surveyTime.getTime() - Date.now()));
+}
+
+async function sendPostTourSurvey(lead: any, sessionId: number, propertyId: number) {
+  const surveyUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/feedback?session=${sessionId}`;
+  const message = `Hi ${lead.name}! Thank you for touring our property today. We'd love your quick feedback (5 short questions). Please complete our survey: ${surveyUrl}`;
+  
+  console.log(`📧 Email sent to ${lead.email}: Post-tour feedback survey`);
+  console.log(`📱 SMS sent to ${lead.phone}: ${message}`);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Properties routes
   app.get("/api/properties", async (req, res) => {
@@ -1204,49 +1238,4 @@ async function syncPlatformData(platform: string, apiKey: string, syncType: stri
   });
 }
 
-// Function to schedule post-tour feedback survey
-function schedulePostTourSurvey(showing: any) {
-  // Schedule survey to be sent 1 hour after the showing
-  const showingDateTime = new Date(`${showing.showingDate}T${showing.showingTime}`);
-  const surveyTime = new Date(showingDateTime.getTime() + 60 * 60 * 1000); // Add 1 hour
-  
-  setTimeout(async () => {
-    try {
-      // Get lead information
-      const lead = await storage.getLead(showing.leadId);
-      if (!lead) return;
 
-      // Create feedback session for post-tour survey
-      const session = await storage.createFeedbackSession({
-        leadId: showing.leadId,
-        propertyId: showing.propertyId,
-        sessionType: 'post_tour',
-        status: 'active',
-        currentQuestionIndex: 0
-      });
-
-      // Send survey via SMS and email
-      await sendPostTourSurvey(lead, session.id, showing.propertyId);
-      
-      console.log(`Post-tour survey sent to ${lead.name} for showing at ${showing.showingDate} ${showing.showingTime}`);
-    } catch (error) {
-      console.error('Failed to send post-tour survey:', error);
-    }
-  }, surveyTime.getTime() - Date.now());
-}
-
-// Function to send post-tour survey via SMS and email
-async function sendPostTourSurvey(lead: any, sessionId: number, propertyId: number) {
-  const surveyUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/feedback?session=${sessionId}`;
-  
-  const message = `Hi ${lead.name}! Thank you for touring our property today. We'd love your quick feedback (5 short questions). Please complete our survey: ${surveyUrl}`;
-  
-  // Log survey sending (in production, integrate with SMS/email service)
-  console.log(`📧 Email sent to ${lead.email}: Post-tour feedback survey`);
-  console.log(`📱 SMS sent to ${lead.phone}: ${message}`);
-  
-  // In production, you would integrate with services like:
-  // - Twilio for SMS
-  // - SendGrid/Mailgun for email
-  // - Push notifications for mobile apps
-}
