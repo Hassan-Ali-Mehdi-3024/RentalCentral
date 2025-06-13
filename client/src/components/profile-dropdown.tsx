@@ -83,7 +83,17 @@ export function ProfileDropdown({ onProfileClick, onLogout }: ProfileDropdownPro
         
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => {
+            if (onLogout) {
+              onLogout();
+            } else {
+              // Default logout behavior
+              localStorage.removeItem('auth_token');
+              window.location.href = '/login';
+            }
+          }}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

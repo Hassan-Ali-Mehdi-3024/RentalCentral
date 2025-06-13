@@ -17,6 +17,11 @@ export function Header({ title, subtitle }: HeaderProps) {
     setLocation("/profile");
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setLocation("/login");
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -56,7 +61,7 @@ export function Header({ title, subtitle }: HeaderProps) {
           </Button>
           
           {/* Profile Dropdown */}
-          <ProfileDropdown onProfileClick={handleProfileClick} />
+          <ProfileDropdown onProfileClick={handleProfileClick} onLogout={handleLogout} />
         </div>
       </div>
     </header>
