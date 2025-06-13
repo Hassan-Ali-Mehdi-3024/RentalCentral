@@ -41,66 +41,78 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
   // Discovery questions for new leads
   const discoveryQuestions: QuestionData[] = [
     {
-      text: "What type of property are you looking for?",
+      text: "Property type?",
       type: 'preference',
       responseOptions: ["Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House", "Condo"],
       emojiOptions: ["🏠", "🏢", "🏡", "🏘️"]
     },
     {
-      text: "When are you hoping to move in?",
+      text: "Move-in date?",
       type: 'timeline',
       responseOptions: ["Immediately", "Within 1 month", "Within 2-3 months", "3+ months", "Flexible"],
       emojiOptions: ["🚀", "📅", "⏰", "🔄"]
     },
     {
-      text: "What's your budget range for monthly rent?",
+      text: "Budget range?",
       type: 'pricing',
       responseOptions: ["Under $1,500", "$1,500-$2,500", "$2,500-$3,500", "$3,500+", "Flexible"],
       emojiOptions: ["💵", "💰", "💳", "🏦"]
     },
     {
-      text: "What amenities are most important to you?",
+      text: "Top amenities?",
       type: 'preference',
       responseOptions: ["Parking", "Pet-friendly", "Gym/Fitness", "Pool", "In-unit laundry", "Balcony/Patio"],
       emojiOptions: ["🅿️", "🐕", "🏋️", "🏊", "🧺", "🌿"]
     },
     {
-      text: "How interested are you in scheduling a tour?",
+      text: "Interest in touring?",
       type: 'interest',
       responseOptions: ["Very interested", "Somewhat interested", "Maybe later", "Not interested"],
       emojiOptions: ["😍", "🙂", "🤔", "😐"]
+    },
+    {
+      text: "Max budget you'd consider?",
+      type: 'pricing',
+      responseOptions: ["Current budget", "10% higher", "20% higher", "Significantly more", "Can't go higher"],
+      emojiOptions: ["💰", "💵", "💳", "🚫"]
     }
   ];
 
   // Post-tour questions with AI-powered follow-ups
   const postTourQuestions: QuestionData[] = [
     {
-      text: "How would you rate your overall tour experience?",
+      text: "Rate your tour?",
       type: 'interest',
       responseOptions: ["Excellent", "Good", "Fair", "Poor"],
       emojiOptions: ["😍", "😊", "😐", "😞"]
     },
     {
-      text: "What did you like most about the property?",
+      text: "What did you like most?",
       type: 'preference',
       emojiOptions: ["✨", "🏠", "🌟", "👍"]
     },
     {
-      text: "Is there anything that concerns you about this property?",
+      text: "Any concerns?",
       type: 'open',
       emojiOptions: ["🤔", "😟", "❓", "💭"]
     },
     {
-      text: "Based on what you saw, what rent would you consider fair for this unit?",
+      text: "Fair rent for this unit?",
       type: 'pricing',
       responseOptions: ["As listed", "10% less", "15% less", "20% less", "Would need significant reduction"],
       emojiOptions: ["💰", "💵", "💳", "🤷"]
     },
     {
-      text: "If you were to move forward, when would be your ideal move-in date?",
+      text: "Ideal move-in date?",
       type: 'timeline',
       responseOptions: ["Immediately", "Within 2 weeks", "Within 1 month", "1-2 months", "Not ready to commit"],
       emojiOptions: ["🚀", "📅", "⏰", "🤷"]
+    },
+    {
+      text: "Price that would interest you?",
+      type: 'pricing',
+      responseOptions: ["As listed", "$100 less", "$200 less", "$300+ less", "Not price-driven"],
+      emojiOptions: ["💰", "💵", "💳", "🤷"]
     }
   ];
 
@@ -108,29 +120,27 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
   const generateFollowUpQuestions = (responses: string[]): QuestionData[] => {
     const followUps: QuestionData[] = [];
     
-    // Check if interest level is unclear and pricing wasn't mentioned
-    const hasUnclearInterest = responses.some(r => 
-      r.toLowerCase().includes('maybe') || 
-      r.toLowerCase().includes('not sure') ||
-      r.toLowerCase().includes('somewhat') ||
-      r.toLowerCase().includes('think about')
-    );
+    // Ensure we always have at least 5 total questions
+    const totalQuestions = (sessionType === 'discovery' ? discoveryQuestions.length : postTourQuestions.length) + followUps.length;
     
-    const hasPricingInfo = responses.some(r => 
-      r.toLowerCase().includes('$') || 
-      r.toLowerCase().includes('price') || 
-      r.toLowerCase().includes('rent') ||
-      r.toLowerCase().includes('budget')
-    );
-
-    // Always ask pricing question if interest is unclear and no pricing mentioned
-    if (hasUnclearInterest && !hasPricingInfo) {
-      followUps.push({
-        text: "What monthly rent amount would make you more interested in this property?",
-        type: 'pricing',
-        responseOptions: ["$100 less", "$200 less", "$300+ less", "Price isn't the main issue"],
-        emojiOptions: ["💰", "💵", "💳", "🤷"]
-      });
+    if (totalQuestions < 5) {
+      // Add additional questions to reach minimum of 5
+      const additionalQuestions: QuestionData[] = [
+        {
+          text: "Overall interest level?",
+          type: 'interest',
+          responseOptions: ["Very interested", "Somewhat interested", "Not interested", "Need more time"],
+          emojiOptions: ["😍", "🙂", "😐", "🤔"]
+        },
+        {
+          text: "Any price that would work?",
+          type: 'pricing',
+          responseOptions: ["Current price fine", "$50 less", "$100 less", "$200+ less", "Price not main factor"],
+          emojiOptions: ["💰", "💵", "💳", "🤷"]
+        }
+      ];
+      
+      followUps.push(...additionalQuestions.slice(0, 5 - totalQuestions));
     }
 
     // Ask about move-in timeline if not clearly stated
