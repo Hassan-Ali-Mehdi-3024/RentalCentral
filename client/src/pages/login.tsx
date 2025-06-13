@@ -74,7 +74,7 @@ export default function Login() {
               Your AI Co-Agent Guarantees a Rental Offer in 30 Days
             </h1>
             <p className="text-xl text-blue-100 mb-6">
-              Make decisions based on numbers, not feelings. Get real insights and data-driven feedback to secure the perfect rental property.
+              Make decisions based on numbers, not feelings. Get real insights and data-driven feedback to secure a tenant fast.
             </p>
             
             <div className="flex items-center mb-4">
