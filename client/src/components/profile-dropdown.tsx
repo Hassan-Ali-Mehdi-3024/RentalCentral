@@ -15,9 +15,10 @@ import { api } from "@/lib/api";
 
 interface ProfileDropdownProps {
   onProfileClick: () => void;
+  onLogout?: () => void;
 }
 
-export function ProfileDropdown({ onProfileClick }: ProfileDropdownProps) {
+export function ProfileDropdown({ onProfileClick, onLogout }: ProfileDropdownProps) {
   const { data: profile } = useQuery({
     queryKey: ["/api/profile"],
     queryFn: () => api.profile.get(),

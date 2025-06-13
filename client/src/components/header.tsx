@@ -1,4 +1,4 @@
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +20,20 @@ export function Header({ title, subtitle }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">{title}</h2>
-          {subtitle && (
-            <p className="text-muted-foreground">{subtitle}</p>
-          )}
+        <div className="flex items-center">
+          <div className="flex items-center mr-8">
+            <Building2 className="h-8 w-8 mr-2 text-blue-600" />
+            <div>
+              <span className="text-xl font-bold text-gray-900">RentAI Pro</span>
+              <p className="text-xs text-blue-600 font-medium">30-Day Rental Guarantee</p>
+            </div>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+            {subtitle && (
+              <p className="text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center space-x-4">

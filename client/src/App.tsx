@@ -12,11 +12,13 @@ import Feedback from "@/pages/feedback";
 import Performance from "@/pages/performance";
 import Profile from "@/pages/profile";
 import Import from "@/pages/import";
+import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={Login} />
       <Route path="/" component={Dashboard} />
       <Route path="/properties" component={Properties} />
       <Route path="/leads" component={Leads} />
