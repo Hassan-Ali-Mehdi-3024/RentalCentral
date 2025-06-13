@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { User, Camera, Building, Shield, Save, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Camera, Building, Shield, Save, Upload } from "lucide-react";
 import { Header } from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,10 @@ const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
-  phone: z.string().optional(),
+  phone: z.string().min(1, "Phone number is required"),
   bio: z.string().optional(),
   website: z.string().url().optional().or(z.literal("")),
+  profileImageUrl: z.string().optional(),
   
   // Licensed Agent Fields
   licenseNumber: z.string().optional(),
@@ -95,40 +96,40 @@ const US_STATES = [
   { value: "WA", label: "Washington" },
   { value: "WV", label: "West Virginia" },
   { value: "WI", label: "Wisconsin" },
-  { value: "WY", label: "Wyoming" },
-];
-
-const AGENT_SPECIALTIES = [
-  "Residential Sales",
-  "Commercial Real Estate",
-  "Luxury Properties",
-  "First-Time Buyers",
-  "Investment Properties",
-  "Property Management",
-  "Relocation Services",
-  "New Construction",
-  "Foreclosures & REOs",
-  "Land Development"
+  { value: "WY", label: "Wyoming" }
 ];
 
 const PROPERTY_TYPES = [
-  "Single Family Homes",
-  "Condominiums",
-  "Townhouses",
-  "Apartments",
-  "Commercial Buildings",
-  "Mixed-Use Properties",
-  "Vacation Rentals",
-  "Student Housing",
-  "Senior Living",
-  "Industrial Properties"
+  "Single Family Home",
+  "Multi-Family",
+  "Apartment Complex",
+  "Condo",
+  "Townhouse",
+  "Commercial",
+  "Office Building",
+  "Retail Space",
+  "Warehouse",
+  "Mixed Use"
+];
+
+const SPECIALTIES = [
+  "Residential Sales",
+  "Commercial Real Estate",
+  "Property Management",
+  "Investment Properties",
+  "Luxury Homes",
+  "First-Time Buyers",
+  "Relocation Services",
+  "Short Sales",
+  "Foreclosures",
+  "New Construction"
 ];
 
 export default function Profile() {
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const [profileImage, setProfileImage] = useState<string>("");
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -147,6 +148,7 @@ export default function Profile() {
       phone: "",
       bio: "",
       website: "",
+      profileImageUrl: "",
       licenseNumber: "",
       licenseState: "",
       licenseExpiration: "",
@@ -154,17 +156,19 @@ export default function Profile() {
       brokerageAddress: "",
       brokeragePhone: "",
       yearsExperience: 0,
+      specialties: [],
       companyName: "",
       businessAddress: "",
       numberOfProperties: 0,
+      propertyTypes: [],
     }
   });
 
-  const { watch, setValue } = form;
+  const { watch, setValue, register, handleSubmit, formState: { errors } } = form;
   const isLicensedAgent = watch("isLicensedAgent");
 
   // Update form when profile data loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile) {
       form.reset({
         isLicensedAgent: profile.isLicensedAgent || false,
@@ -174,6 +178,7 @@ export default function Profile() {
         phone: profile.phone || "",
         bio: profile.bio || "",
         website: profile.website || "",
+        profileImageUrl: profile.profileImageUrl || "",
         licenseNumber: profile.licenseNumber || "",
         licenseState: profile.licenseState || "",
         licenseExpiration: profile.licenseExpiration || "",
@@ -181,60 +186,44 @@ export default function Profile() {
         brokerageAddress: profile.brokerageAddress || "",
         brokeragePhone: profile.brokeragePhone || "",
         yearsExperience: profile.yearsExperience || 0,
+        specialties: profile.specialties || [],
         companyName: profile.companyName || "",
         businessAddress: profile.businessAddress || "",
         numberOfProperties: profile.numberOfProperties || 0,
+        propertyTypes: profile.propertyTypes || [],
       });
       
-      setProfileImage(profile.profileImageUrl || null);
-      setSelectedSpecialties(profile.specialties ? JSON.parse(profile.specialties) : []);
-      setSelectedPropertyTypes(profile.propertyTypes ? JSON.parse(profile.propertyTypes) : []);
+      setSelectedPropertyTypes(profile.propertyTypes || []);
+      setSelectedSpecialties(profile.specialties || []);
+      setProfileImage(profile.profileImageUrl || "");
     }
   }, [profile, form]);
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: ProfileFormData) => {
-      const profileData = {
-        ...data,
-        specialties: JSON.stringify(selectedSpecialties),
-        propertyTypes: JSON.stringify(selectedPropertyTypes),
-        profileImageUrl: profileImage,
-      };
-      return api.profile.update(profileData);
-    },
+    mutationFn: (data: ProfileFormData) => api.profile.update(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       toast({
-        title: "Profile Updated",
+        title: "Profile updated",
         description: "Your profile has been successfully updated.",
       });
     },
     onError: () => {
       toast({
-        title: "Update Failed",
+        title: "Error",
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSpecialtyToggle = (specialty: string) => {
-    setSelectedSpecialties(prev => 
-      prev.includes(specialty) 
-        ? prev.filter(s => s !== specialty)
-        : [...prev, specialty]
-    );
+  const onSubmit = (data: ProfileFormData) => {
+    // Add selected arrays to form data
+    data.propertyTypes = selectedPropertyTypes;
+    data.specialties = selectedSpecialties;
+    data.profileImageUrl = profileImage;
+    
+    updateProfileMutation.mutate(data);
   };
 
   const handlePropertyTypeToggle = (type: string) => {
@@ -245,408 +234,405 @@ export default function Profile() {
     );
   };
 
-  const onSubmit = (data: ProfileFormData) => {
-    updateProfileMutation.mutate(data);
+  const handleSpecialtyToggle = (specialty: string) => {
+    setSelectedSpecialties(prev => 
+      prev.includes(specialty) 
+        ? prev.filter(s => s !== specialty)
+        : [...prev, specialty]
+    );
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase();
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // In a real app, upload to cloud storage
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setProfileImage(result);
+        setValue("profileImageUrl", result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const getInitials = () => {
+    const firstName = watch("firstName");
+    const lastName = watch("lastName");
+    return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
   };
 
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-hidden">
-        <Header title="Profile Settings" subtitle="Manage your professional profile" />
-        <main className="p-6 overflow-y-auto h-full">
-          <div className="max-w-4xl mx-auto">
-            <div className="animate-pulse space-y-6">
-              <div className="h-32 bg-gray-200 rounded-lg"></div>
-              <div className="h-96 bg-gray-200 rounded-lg"></div>
-            </div>
-          </div>
-        </main>
+      <div className="flex-1 p-8">
+        <Header title="Profile Settings" subtitle="Manage your account information" />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <Header title="Profile Settings" subtitle="Manage your professional profile" />
-      
-      <main className="p-6 overflow-y-auto h-full">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Profile Image and Role Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="h-5 w-5 mr-2" />
-                  Profile Information
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent className="space-y-6">
-                {/* Profile Image */}
-                <div className="flex items-center space-x-6">
-                  <div className="relative">
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={profileImage || undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                        {getInitials(watch("firstName"), watch("lastName"))}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Profile Photo</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Upload a professional photo that will be displayed on your profile
-                    </p>
-                  </div>
-                </div>
+    <div className="flex-1 p-8">
+      <Header title="Profile Settings" subtitle="Manage your account information and professional details" />
 
-                {/* Role Selection */}
-                <div className="space-y-4">
-                  <Label className="text-base font-semibold">Professional Role</Label>
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={isLicensedAgent}
-                      onCheckedChange={(checked) => setValue("isLicensedAgent", checked)}
-                    />
-                    <div className="flex items-center space-x-2">
-                      {isLicensedAgent ? (
-                        <>
-                          <Shield className="h-5 w-5 text-primary" />
-                          <span className="font-medium">Licensed Real Estate Agent</span>
-                          <Badge className="bg-primary">Licensed</Badge>
-                        </>
-                      ) : (
-                        <>
-                          <Building className="h-5 w-5 text-secondary" />
-                          <span className="font-medium">Property Owner</span>
-                          <Badge variant="secondary">Owner</Badge>
-                        </>
-                      )}
-                    </div>
-                  </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        {/* Profile Header */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Profile Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Profile Image */}
+            <div className="flex items-center space-x-6">
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profileImage} alt="Profile" />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                  onClick={() => document.getElementById('profile-image')?.click()}
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+                <input
+                  id="profile-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium">Profile Picture</h3>
+                <p className="text-sm text-muted-foreground">
+                  Upload a professional photo to help clients recognize you
+                </p>
+              </div>
+            </div>
+
+            {/* License Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <div>
+                  <Label htmlFor="isLicensedAgent" className="text-base font-medium">
+                    Licensed Real Estate Agent
+                  </Label>
                   <p className="text-sm text-muted-foreground">
-                    {isLicensedAgent 
-                      ? "Select this if you have a real estate license and represent clients in property transactions."
-                      : "Select this if you own rental properties and manage them directly."
-                    }
+                    Are you a licensed real estate professional?
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <Switch
+                id="isLicensedAgent"
+                checked={isLicensedAgent}
+                onCheckedChange={(checked) => setValue("isLicensedAgent", checked)}
+              />
+            </div>
 
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
+            {isLicensedAgent && (
+              <Badge className="bg-green-100 text-green-800">
+                <Shield className="h-3 w-3 mr-1" />
+                Licensed Professional
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  {...register("firstName")}
+                  placeholder="Enter your first name"
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-red-600 mt-1">{errors.firstName.message}</p>
+                )}
+              </div>
               
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      {...form.register("firstName")}
-                      placeholder="Enter your first name"
-                    />
-                    {form.formState.errors.firstName && (
-                      <p className="text-sm text-red-600 mt-1">
-                        {form.formState.errors.firstName.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      {...form.register("lastName")}
-                      placeholder="Enter your last name"
-                    />
-                    {form.formState.errors.lastName && (
-                      <p className="text-sm text-red-600 mt-1">
-                        {form.formState.errors.lastName.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input
+                  id="lastName"
+                  {...register("lastName")}
+                  placeholder="Enter your last name"
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-red-600 mt-1">{errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...form.register("email")}
-                      placeholder="Enter your email address"
-                    />
-                    {form.formState.errors.email && (
-                      <p className="text-sm text-red-600 mt-1">
-                        {form.formState.errors.email.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      {...form.register("phone")}
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register("email")}
+                  placeholder="Enter your email address"
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  {...register("phone")}
+                  placeholder="Enter your phone number"
+                />
+                {errors.phone && (
+                  <p className="text-sm text-red-600 mt-1">{errors.phone.message}</p>
+                )}
+              </div>
+            </div>
 
+            <div>
+              <Label htmlFor="bio">Professional Bio</Label>
+              <Textarea
+                id="bio"
+                {...register("bio")}
+                placeholder="Tell clients about your experience and expertise"
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                type="url"
+                {...register("website")}
+                placeholder="https://yourwebsite.com"
+              />
+              {errors.website && (
+                <p className="text-sm text-red-600 mt-1">{errors.website.message}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Licensed Agent Information */}
+        {isLicensedAgent && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Licensed Agent Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="bio">Professional Bio</Label>
-                  <Textarea
-                    id="bio"
-                    {...form.register("bio")}
-                    placeholder="Write a brief professional bio..."
-                    rows={4}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="website">Website</Label>
+                  <Label htmlFor="licenseNumber">License Number *</Label>
                   <Input
-                    id="website"
-                    type="url"
-                    {...form.register("website")}
-                    placeholder="https://your-website.com"
+                    id="licenseNumber"
+                    {...register("licenseNumber")}
+                    placeholder="Enter your license number"
                   />
-                  {form.formState.errors.website && (
-                    <p className="text-sm text-red-600 mt-1">
-                      {form.formState.errors.website.message}
-                    </p>
+                  {errors.licenseNumber && (
+                    <p className="text-sm text-red-600 mt-1">{errors.licenseNumber.message}</p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Licensed Agent Information */}
-            {isLicensedAgent && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Shield className="h-5 w-5 mr-2" />
-                    Licensed Agent Information
-                  </CardTitle>
-                </CardHeader>
                 
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="licenseNumber">License Number *</Label>
-                      <Input
-                        id="licenseNumber"
-                        {...form.register("licenseNumber")}
-                        placeholder="Enter your license number"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="licenseState">License State *</Label>
-                      <Select value={watch("licenseState") || ""} onValueChange={(value) => setValue("licenseState", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {US_STATES.map((state) => (
-                            <SelectItem key={state.value} value={state.value}>
-                              {state.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="licenseExpiration">License Expiration</Label>
-                      <Input
-                        id="licenseExpiration"
-                        type="date"
-                        {...form.register("licenseExpiration")}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="yearsExperience">Years of Experience</Label>
-                      <Input
-                        id="yearsExperience"
-                        type="number"
-                        min="0"
-                        {...form.register("yearsExperience", { valueAsNumber: true })}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="brokerageName">Brokerage Name *</Label>
-                    <Input
-                      id="brokerageName"
-                      {...form.register("brokerageName")}
-                      placeholder="Enter your brokerage name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="brokerageAddress">Brokerage Address</Label>
-                    <Textarea
-                      id="brokerageAddress"
-                      {...form.register("brokerageAddress")}
-                      placeholder="Enter the full brokerage address"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="brokeragePhone">Brokerage Phone</Label>
-                    <Input
-                      id="brokeragePhone"
-                      type="tel"
-                      {...form.register("brokeragePhone")}
-                      placeholder="Enter brokerage phone number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Specialties</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Select your areas of expertise (you can select multiple)
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {AGENT_SPECIALTIES.map((specialty) => (
-                        <div
-                          key={specialty}
-                          className={`p-2 border rounded-lg cursor-pointer transition-colors ${
-                            selectedSpecialties.includes(specialty)
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background border-gray-300 hover:bg-gray-50"
-                          }`}
-                          onClick={() => handleSpecialtyToggle(specialty)}
-                        >
-                          <span className="text-sm">{specialty}</span>
-                        </div>
+                <div>
+                  <Label htmlFor="licenseState">License State *</Label>
+                  <Select value={watch("licenseState") || ""} onValueChange={(value) => setValue("licenseState", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {US_STATES.map((state) => (
+                        <SelectItem key={state.value} value={state.value}>
+                          {state.label}
+                        </SelectItem>
                       ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    </SelectContent>
+                  </Select>
+                  {errors.licenseState && (
+                    <p className="text-sm text-red-600 mt-1">{errors.licenseState.message}</p>
+                  )}
+                </div>
+              </div>
 
-            {/* Property Owner Information */}
-            {!isLicensedAgent && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Building className="h-5 w-5 mr-2" />
-                    Property Owner Information
-                  </CardTitle>
-                </CardHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="licenseExpiration">License Expiration</Label>
+                  <Input
+                    id="licenseExpiration"
+                    type="date"
+                    {...register("licenseExpiration")}
+                  />
+                </div>
                 
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      {...form.register("companyName")}
-                      placeholder="Enter your company or business name"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="yearsExperience">Years of Experience</Label>
+                  <Input
+                    id="yearsExperience"
+                    type="number"
+                    min="0"
+                    {...register("yearsExperience", { valueAsNumber: true })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
 
-                  <div>
-                    <Label htmlFor="businessAddress">Business Address</Label>
-                    <Textarea
-                      id="businessAddress"
-                      {...form.register("businessAddress")}
-                      placeholder="Enter your business address"
-                      rows={3}
-                    />
-                  </div>
+              <div>
+                <Label htmlFor="brokerageName">Brokerage Name *</Label>
+                <Input
+                  id="brokerageName"
+                  {...register("brokerageName")}
+                  placeholder="Enter your brokerage name"
+                />
+                {errors.brokerageName && (
+                  <p className="text-sm text-red-600 mt-1">{errors.brokerageName.message}</p>
+                )}
+              </div>
 
-                  <div>
-                    <Label htmlFor="numberOfProperties">Number of Properties</Label>
-                    <Input
-                      id="numberOfProperties"
-                      type="number"
-                      min="0"
-                      {...form.register("numberOfProperties", { valueAsNumber: true })}
-                      placeholder="0"
-                    />
-                  </div>
+              <div>
+                <Label htmlFor="brokerageAddress">Brokerage Address</Label>
+                <Textarea
+                  id="brokerageAddress"
+                  {...register("brokerageAddress")}
+                  placeholder="Enter your brokerage address"
+                  rows={3}
+                />
+              </div>
 
-                  <div>
-                    <Label>Property Types</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Select the types of properties you own or manage
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {PROPERTY_TYPES.map((type) => (
-                        <div
-                          key={type}
-                          className={`p-2 border rounded-lg cursor-pointer transition-colors ${
-                            selectedPropertyTypes.includes(type)
-                              ? "bg-secondary text-secondary-foreground border-secondary"
-                              : "bg-background border-gray-300 hover:bg-gray-50"
-                          }`}
-                          onClick={() => handlePropertyTypeToggle(type)}
-                        >
-                          <span className="text-sm">{type}</span>
-                        </div>
-                      ))}
+              <div>
+                <Label htmlFor="brokeragePhone">Brokerage Phone</Label>
+                <Input
+                  id="brokeragePhone"
+                  type="tel"
+                  {...register("brokeragePhone")}
+                  placeholder="Enter brokerage phone number"
+                />
+              </div>
+
+              <div>
+                <Label>Specialties</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select your areas of expertise
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {SPECIALTIES.map((specialty) => (
+                    <div
+                      key={specialty}
+                      className={`p-2 border rounded-lg cursor-pointer transition-colors ${
+                        selectedSpecialties.includes(specialty)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-gray-300 hover:bg-gray-50"
+                      }`}
+                      onClick={() => handleSpecialtyToggle(specialty)}
+                    >
+                      <span className="text-sm">{specialty}</span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-            {/* Submit Button */}
-            <div className="flex justify-end space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => form.reset()}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Reset Changes
-              </Button>
-              
-              <Button
-                type="submit"
-                disabled={updateProfileMutation.isPending}
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
-              </Button>
-            </div>
-          </form>
+        {/* Property Owner Information */}
+        {!isLicensedAgent && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Property Owner Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input
+                  id="companyName"
+                  {...register("companyName")}
+                  placeholder="Enter your company name (if applicable)"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="businessAddress">Business Address</Label>
+                <Textarea
+                  id="businessAddress"
+                  {...register("businessAddress")}
+                  placeholder="Enter your business address"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="numberOfProperties">Number of Properties</Label>
+                <Input
+                  id="numberOfProperties"
+                  type="number"
+                  min="0"
+                  {...register("numberOfProperties", { valueAsNumber: true })}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <Label>Property Types</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select the types of properties you own or manage
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {PROPERTY_TYPES.map((type) => (
+                    <div
+                      key={type}
+                      className={`p-2 border rounded-lg cursor-pointer transition-colors ${
+                        selectedPropertyTypes.includes(type)
+                          ? "bg-secondary text-secondary-foreground border-secondary"
+                          : "bg-background border-gray-300 hover:bg-gray-50"
+                      }`}
+                      onClick={() => handlePropertyTypeToggle(type)}
+                    >
+                      <span className="text-sm">{type}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <Button 
+            type="submit" 
+            className="w-full md:w-auto"
+            disabled={updateProfileMutation.isPending}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
+          </Button>
         </div>
-      </main>
+      </form>
     </div>
   );
 }
