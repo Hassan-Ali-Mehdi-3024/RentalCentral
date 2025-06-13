@@ -13,7 +13,9 @@ import type {
   FeedbackSession,
   InsertFeedbackSession,
   FeedbackResponse,
-  InsertFeedbackResponse
+  InsertFeedbackResponse,
+  UserProfile,
+  InsertUserProfile
 } from "@shared/schema";
 
 export const api = {
@@ -165,13 +167,13 @@ export const api = {
 
   // Profile API
   profile: {
-    get: (): Promise<any> =>
+    get: (): Promise<UserProfile> =>
       fetch("/api/profile", { credentials: "include" }).then(res => res.json()),
       
-    update: (profile: any): Promise<any> =>
+    update: (profile: InsertUserProfile): Promise<UserProfile> =>
       apiRequest("PUT", "/api/profile", profile).then(res => res.json()),
       
-    create: (profile: any): Promise<any> =>
+    create: (profile: InsertUserProfile): Promise<UserProfile> =>
       apiRequest("POST", "/api/profile", profile).then(res => res.json())
   }
 };

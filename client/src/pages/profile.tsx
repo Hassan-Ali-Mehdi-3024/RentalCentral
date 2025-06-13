@@ -165,7 +165,8 @@ export default function Profile() {
   });
 
   const { watch, setValue, register, handleSubmit, formState: { errors } } = form;
-  const isLicensedAgent = watch("isLicensedAgent");
+  const watchedValues = watch();
+  const isLicensedAgent = watchedValues.isLicensedAgent;
 
   // Update form when profile data loads
   useEffect(() => {

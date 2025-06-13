@@ -925,6 +925,126 @@ If you've gathered sufficient feedback, set completed: true.`;
     }
   });
 
+  // Profile Management routes
+  app.get("/api/profile", async (req, res) => {
+    try {
+      // In a real app, get userId from session/JWT
+      const userId = "user-123"; // Mock user ID for demo
+      const profile = await storage.getUserProfile(userId);
+      
+      if (!profile) {
+        // Return default profile structure if none exists
+        return res.json({
+          userId,
+          isLicensedAgent: false,
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          bio: "",
+          website: "",
+          profileImageUrl: "",
+          licenseNumber: "",
+          licenseState: "",
+          licenseExpiration: "",
+          brokerageName: "",
+          brokerageAddress: "",
+          brokeragePhone: "",
+          yearsExperience: 0,
+          specialties: [],
+          companyName: "",
+          businessAddress: "",
+          numberOfProperties: 0,
+          propertyTypes: [],
+        });
+      }
+      
+      // Parse JSON fields
+      const profileData = {
+        ...profile,
+        specialties: profile.specialties ? JSON.parse(profile.specialties) : [],
+        propertyTypes: profile.propertyTypes ? JSON.parse(profile.propertyTypes) : [],
+      };
+      
+      res.json(profileData);
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/profile", async (req, res) => {
+    try {
+      const userId = "user-123"; // Mock user ID for demo
+      
+      // Convert arrays to JSON strings for storage
+      const profileData = {
+        ...req.body,
+        userId,
+        specialties: req.body.specialties ? JSON.stringify(req.body.specialties) : null,
+        propertyTypes: req.body.propertyTypes ? JSON.stringify(req.body.propertyTypes) : null,
+      };
+      
+      const validatedData = insertUserProfileSchema.parse(profileData);
+      const profile = await storage.createUserProfile(validatedData);
+      
+      // Parse JSON fields for response
+      const responseProfile = {
+        ...profile,
+        specialties: profile.specialties ? JSON.parse(profile.specialties) : [],
+        propertyTypes: profile.propertyTypes ? JSON.parse(profile.propertyTypes) : [],
+      };
+      
+      res.status(201).json(responseProfile);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid profile data", details: error.errors });
+      } else {
+        console.error("Profile creation error:", error);
+        res.status(500).json({ error: "Failed to create profile" });
+      }
+    }
+  });
+
+  app.put("/api/profile", async (req, res) => {
+    try {
+      const userId = "user-123"; // Mock user ID for demo
+      
+      // Convert arrays to JSON strings for storage
+      const profileData = {
+        ...req.body,
+        specialties: req.body.specialties ? JSON.stringify(req.body.specialties) : null,
+        propertyTypes: req.body.propertyTypes ? JSON.stringify(req.body.propertyTypes) : null,
+      };
+      
+      // Remove userId from validation as it's not part of the update schema
+      const { userId: _, ...updateData } = profileData;
+      const validatedData = insertUserProfileSchema.parse(updateData);
+      
+      const profile = await storage.updateUserProfile(userId, validatedData);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      // Parse JSON fields for response
+      const responseProfile = {
+        ...profile,
+        specialties: profile.specialties ? JSON.parse(profile.specialties) : [],
+        propertyTypes: profile.propertyTypes ? JSON.parse(profile.propertyTypes) : [],
+      };
+      
+      res.json(responseProfile);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid profile data", details: error.errors });
+      } else {
+        console.error("Profile update error:", error);
+        res.status(500).json({ error: "Failed to update profile" });
+      }
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
