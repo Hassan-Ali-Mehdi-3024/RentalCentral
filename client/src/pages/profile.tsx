@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "@/lib/api";
+import type { UserProfile, InsertUserProfile } from "@shared/schema";
 
 const profileSchema = z.object({
   isLicensedAgent: z.boolean(),
@@ -187,21 +188,21 @@ export default function Profile() {
         brokerageAddress: profile.brokerageAddress || "",
         brokeragePhone: profile.brokeragePhone || "",
         yearsExperience: profile.yearsExperience || 0,
-        specialties: profile.specialties || [],
+        specialties: (typeof profile.specialties === 'string' ? JSON.parse(profile.specialties) : profile.specialties) || [],
         companyName: profile.companyName || "",
         businessAddress: profile.businessAddress || "",
         numberOfProperties: profile.numberOfProperties || 0,
-        propertyTypes: profile.propertyTypes || [],
+        propertyTypes: (typeof profile.propertyTypes === 'string' ? JSON.parse(profile.propertyTypes) : profile.propertyTypes) || [],
       });
       
-      setSelectedPropertyTypes(profile.propertyTypes || []);
-      setSelectedSpecialties(profile.specialties || []);
+      setSelectedPropertyTypes((typeof profile.propertyTypes === 'string' ? JSON.parse(profile.propertyTypes) : profile.propertyTypes) || []);
+      setSelectedSpecialties((typeof profile.specialties === 'string' ? JSON.parse(profile.specialties) : profile.specialties) || []);
       setProfileImage(profile.profileImageUrl || "");
     }
   }, [profile, form]);
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: ProfileFormData) => api.profile.update(data),
+    mutationFn: (data: InsertUserProfile) => api.profile.update(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       toast({
@@ -219,12 +220,16 @@ export default function Profile() {
   });
 
   const onSubmit = (data: ProfileFormData) => {
-    // Add selected arrays to form data
-    data.propertyTypes = selectedPropertyTypes;
-    data.specialties = selectedSpecialties;
-    data.profileImageUrl = profileImage;
+    // Convert arrays to JSON strings for storage
+    const profileData: any = {
+      ...data,
+      userId: "user-123", // Mock user ID for demo
+      propertyTypes: JSON.stringify(selectedPropertyTypes),
+      specialties: JSON.stringify(selectedSpecialties),
+      profileImageUrl: profileImage,
+    };
     
-    updateProfileMutation.mutate(data);
+    updateProfileMutation.mutate(profileData);
   };
 
   const handlePropertyTypeToggle = (type: string) => {
