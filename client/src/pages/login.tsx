@@ -37,12 +37,15 @@ export default function Login() {
       // Simulate login process
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Store auth token
+      localStorage.setItem('auth_token', 'demo_token_' + Date.now());
+      
       toast({
         title: "Welcome back!",
         description: "Successfully logged in to your account.",
       });
       
-      // In a real app, redirect to dashboard
+      // Redirect to dashboard
       window.location.href = "/";
     } catch (error) {
       toast({
@@ -219,10 +222,33 @@ export default function Login() {
 
               <div className="mt-6">
                 <Separator className="my-4" />
-                <div className="text-center">
+                <div className="text-center space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      // In a real app, navigate to sign-up page
+                      toast({
+                        title: "Sign Up Coming Soon",
+                        description: "Registration will be available soon. Contact us for early access.",
+                      });
+                    }}
+                  >
+                    Create New Account
+                  </Button>
                   <p className="text-sm text-gray-600">
                     Don't have an account?{" "}
-                    <button className="text-blue-600 hover:text-blue-500 font-medium">
+                    <button 
+                      type="button"
+                      className="text-blue-600 hover:text-blue-500 font-medium"
+                      onClick={() => {
+                        toast({
+                          title: "30-Day Guarantee",
+                          description: "Sign up now and get guaranteed rental offers within 30 days!",
+                        });
+                      }}
+                    >
                       Start your 30-day guarantee
                     </button>
                   </p>
