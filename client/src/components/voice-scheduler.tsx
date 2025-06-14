@@ -1,19 +1,26 @@
 import { useState, useRef } from "react";
-import { Mic, MicOff, Volume2, Calendar, Clock } from "lucide-react";
+import { Mic, MicOff, Volume2, Calendar, Clock, Play, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Property } from "@shared/schema";
 
 export function VoiceScheduler() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | undefined>();
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [createdSchedules, setCreatedSchedules] = useState<any[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -27,20 +34,35 @@ export function VoiceScheduler() {
       api.schedules.processVoiceCommand(transcript, propertyId),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+      setCreatedSchedules(data.schedules || []);
+      setShowSuccess(true);
       toast({
-        title: "Schedule Created",
-        description: `Created ${data.schedules.length} schedule(s) from your voice command.`,
+        title: "Schedule Created Successfully",
+        description: `Added ${data.schedules?.length || 0} time slots to your availability calendar.`,
       });
-      setTranscript("");
+      
+      // Auto-close modal after success
+      setTimeout(() => {
+        setIsModalOpen(false);
+        resetForm();
+      }, 3000);
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to process voice command. Please try again.",
+        title: "Processing Error",
+        description: "Unable to process your voice schedule. Please try again.",
         variant: "destructive",
       });
     },
   });
+
+  const resetForm = () => {
+    setTranscript("");
+    setRecordingTime(0);
+    setCreatedSchedules([]);
+    setShowSuccess(false);
+    setSelectedPropertyId(undefined);
+  };
 
   const startRecording = async () => {
     try {
@@ -49,6 +71,12 @@ export function VoiceScheduler() {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
+      // Start recording timer
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
@@ -56,8 +84,13 @@ export function VoiceScheduler() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         
-        // For demo purposes, we'll use Web Speech API for transcription
-        // In production, you'd send the audio to a speech-to-text service
+        // Clear the recording timer
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current);
+          recordingIntervalRef.current = null;
+        }
+        
+        // Use Web Speech API for transcription
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
           const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
           const recognition = new SpeechRecognition();
@@ -69,12 +102,17 @@ export function VoiceScheduler() {
           recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
             setTranscript(transcript);
+            
+            // Auto-process the voice command after a brief delay
+            setTimeout(() => {
+              processVoiceCommand();
+            }, 500);
           };
 
           recognition.onerror = () => {
             toast({
               title: "Speech Recognition Error",
-              description: "Please try typing your schedule instead.",
+              description: "Please try speaking clearly or type your schedule manually.",
               variant: "destructive",
             });
           };
@@ -82,8 +120,8 @@ export function VoiceScheduler() {
           recognition.start();
         } else {
           toast({
-            title: "Speech Recognition Not Supported",
-            description: "Please type your schedule manually.",
+            title: "Speech Recognition Not Available",
+            description: "Please type your schedule in the text area below.",
             variant: "destructive",
           });
         }
@@ -95,8 +133,8 @@ export function VoiceScheduler() {
       setIsRecording(true);
     } catch (error) {
       toast({
-        title: "Microphone Access Denied",
-        description: "Please allow microphone access to use voice commands.",
+        title: "Microphone Access Required",
+        description: "Please allow microphone access to record your schedule.",
         variant: "destructive",
       });
     }
@@ -106,14 +144,19 @@ export function VoiceScheduler() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
     }
   };
 
   const processVoiceCommand = () => {
     if (!transcript.trim()) {
       toast({
-        title: "No Command",
-        description: "Please record or type a scheduling command first.",
+        title: "No Schedule Command",
+        description: "Please record your availability or type it manually.",
         variant: "destructive",
       });
       return;
@@ -123,6 +166,25 @@ export function VoiceScheduler() {
       transcript: transcript.trim(),
       propertyId: selectedPropertyId
     });
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatScheduleTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const getDayName = (dayOfWeek: number) => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[dayOfWeek];
   };
 
   const exampleCommands = [
