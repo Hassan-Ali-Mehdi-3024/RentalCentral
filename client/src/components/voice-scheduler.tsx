@@ -188,125 +188,243 @@ export function VoiceScheduler() {
   };
 
   const exampleCommands = [
-    "Schedule open houses for weekends from 2 PM to 4 PM",
-    "Set availability Monday through Friday 10 AM to 6 PM",
-    "Available Saturdays and Sundays 1 PM to 5 PM",
+    "Available weekends from 2 PM to 4 PM for showings",
+    "Set my schedule Monday through Friday 10 AM to 6 PM", 
+    "I'm available Saturdays and Sundays 1 PM to 5 PM",
     "Schedule showings Tuesday and Thursday 3 PM to 7 PM"
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Mic className="h-5 w-5 mr-2" />
-          Voice Schedule Assistant
-        </CardTitle>
-        <p className="text-muted-foreground text-sm">
-          Use voice commands to set your ideal showing schedule
-        </p>
-      </CardHeader>
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          className="bg-primary hover:bg-blue-600" 
+          onClick={() => {
+            setIsModalOpen(true);
+            resetForm();
+          }}
+        >
+          <Mic className="h-4 w-4 mr-2" />
+          Voice Scheduler
+        </Button>
+      </DialogTrigger>
       
-      <CardContent className="space-y-6">
-        {/* Property Selection */}
-        <div>
-          <label className="text-sm font-medium text-foreground mb-2 block">
-            Select Property (Optional)
-          </label>
-          <Select value={selectedPropertyId?.toString()} onValueChange={(value) => setSelectedPropertyId(parseInt(value))}>
-            <SelectTrigger>
-              <SelectValue placeholder="All properties" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All properties</SelectItem>
-              {properties.map((property) => (
-                <SelectItem key={property.id} value={property.id.toString()}>
-                  {property.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mic className="h-5 w-5" />
+            Voice Schedule Assistant
+          </DialogTitle>
+          <DialogDescription>
+            Record your availability schedule for property showings using voice commands
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Voice Recording */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-600'}`}
-              disabled={voiceCommandMutation.isPending}
-            >
-              {isRecording ? (
-                <>
-                  <MicOff className="h-4 w-4 mr-2" />
-                  Stop Recording
-                </>
-              ) : (
-                <>
-                  <Mic className="h-4 w-4 mr-2" />
-                  Start Recording
-                </>
-              )}
-            </Button>
-            
-            {transcript && (
-              <Button
-                onClick={processVoiceCommand}
-                disabled={voiceCommandMutation.isPending}
-                className="bg-secondary hover:bg-green-600"
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                {voiceCommandMutation.isPending ? "Processing..." : "Create Schedule"}
-              </Button>
-            )}
-          </div>
-
-          {/* Transcript Display */}
-          {transcript && (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-start space-x-2">
-                <Volume2 className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Voice Command:</p>
-                  <p className="text-sm text-muted-foreground mt-1">{transcript}</p>
-                </div>
+        <div className="space-y-6">
+          {/* Success State */}
+          {showSuccess && createdSchedules.length > 0 && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <h3 className="font-medium text-green-800">Schedule Created Successfully!</h3>
+              </div>
+              <p className="text-sm text-green-700 mb-3">
+                Added {createdSchedules.length} time slots to your availability calendar:
+              </p>
+              <div className="space-y-2">
+                {createdSchedules.map((schedule, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      {getDayName(schedule.dayOfWeek)}
+                    </Badge>
+                    <span className="text-sm text-green-700">
+                      {formatScheduleTime(schedule.startTime)} - {formatScheduleTime(schedule.endTime)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Manual Input Fallback */}
+          {/* Property Selection */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Or type your schedule manually:
+            <label className="text-sm font-medium mb-2 block">
+              Select Property (Optional)
             </label>
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Type your scheduling preferences here..."
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              rows={3}
-            />
+            <Select 
+              value={selectedPropertyId?.toString()} 
+              onValueChange={(value) => setSelectedPropertyId(value ? parseInt(value) : undefined)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Apply to all properties" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All properties</SelectItem>
+                {properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id.toString()}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Voice Recording Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Record Your Schedule</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Recording Controls */}
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative">
+                  <Button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    size="lg"
+                    className={`w-24 h-24 rounded-full ${
+                      isRecording 
+                        ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                        : 'bg-primary hover:bg-blue-600'
+                    }`}
+                    disabled={voiceCommandMutation.isPending}
+                  >
+                    {isRecording ? (
+                      <MicOff className="h-8 w-8" />
+                    ) : (
+                      <Mic className="h-8 w-8" />
+                    )}
+                  </Button>
+                  
+                  {isRecording && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
+                      <span className="text-sm font-medium text-red-600">
+                        {formatTime(recordingTime)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-center">
+                  <p className="text-sm font-medium">
+                    {isRecording ? "Recording your schedule..." : "Click to start recording"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isRecording 
+                      ? "Speak clearly about your available times" 
+                      : "Press and hold to record your availability"
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Voice Transcript */}
+              {transcript && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="flex items-start space-x-2">
+                    <Volume2 className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Recorded Schedule:</p>
+                      <p className="text-sm text-muted-foreground mt-1">{transcript}</p>
+                    </div>
+                  </div>
+                  
+                  {!voiceCommandMutation.isPending && !showSuccess && (
+                    <div className="flex justify-end mt-3">
+                      <Button
+                        onClick={processVoiceCommand}
+                        className="bg-secondary hover:bg-green-600"
+                        size="sm"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Add to Calendar
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {voiceCommandMutation.isPending && (
+                <div className="flex items-center justify-center p-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-3"></div>
+                  <span className="text-sm">Processing your schedule...</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Manual Input Alternative */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Or Type Your Schedule</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Type your availability schedule here (e.g., 'Available weekdays 9 AM to 5 PM')"
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                rows={3}
+              />
+              
+              {transcript && !voiceCommandMutation.isPending && !showSuccess && (
+                <div className="flex justify-end mt-3">
+                  <Button
+                    onClick={processVoiceCommand}
+                    className="bg-secondary hover:bg-green-600"
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Add to Calendar
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Example Commands */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Example Commands
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-2">
+                {exampleCommands.map((command, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setTranscript(command)}
+                    className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200"
+                  >
+                    <span className="text-muted-foreground">"</span>
+                    <span className="text-foreground">{command}</span>
+                    <span className="text-muted-foreground">"</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Example Commands */}
-        <div>
-          <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
-            <Clock className="h-4 w-4 mr-2" />
-            Example Commands
-          </h4>
-          <div className="space-y-2">
-            {exampleCommands.map((command, index) => (
-              <button
-                key={index}
-                onClick={() => setTranscript(command)}
-                className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm text-muted-foreground"
-              >
-                "{command}"
-              </button>
-            ))}
-          </div>
+        {/* Modal Actions */}
+        <div className="flex justify-end space-x-3 pt-6 border-t">
+          <Button
+            variant="outline"
+            onClick={() => setIsModalOpen(false)}
+          >
+            Close
+          </Button>
+          {!showSuccess && transcript && !voiceCommandMutation.isPending && (
+            <Button
+              onClick={processVoiceCommand}
+              className="bg-secondary hover:bg-green-600"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Add Schedule
+            </Button>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
