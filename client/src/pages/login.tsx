@@ -96,7 +96,7 @@ export default function Login() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg mb-1">30-Day Rental Guarantee</h3>
-                <p className="text-blue-100">Our AI co-agent analyzes market data and ensures you receive qualified rental offers within 30 days or we work for free.</p>
+                <p className="text-blue-100">Our AI co-agent analyzes market data and ensures you receive qualified rental offers within the first days of hitting the market.</p>
               </div>
             </div>
             
@@ -116,7 +116,7 @@ export default function Login() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg mb-1">AI-Powered Lead Engagement</h3>
-                <p className="text-blue-100">Our intelligent questionnaire system engages prospects automatically, collecting valuable feedback and pricing insights.</p>
+                <p className="text-blue-100">Our intelligent questionnaire system engages prospects automatically, collecting valuable feedback and pricing insights from the actual market that speaks with their wallets.</p>
               </div>
             </div>
           </div>
