@@ -41,44 +41,44 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
   // Discovery questions for new leads
   const discoveryQuestions: QuestionData[] = [
     {
-      text: "Property type?",
+      text: "What type of property interests you?",
       type: 'preference',
       responseOptions: ["Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House", "Condo"],
-      emojiOptions: ["🏠", "🏢", "🏡", "🏘️"]
+      emojiOptions: ["🏢", "🛏️", "🏠", "🏘️"]
     },
     {
-      text: "Move-in date?",
+      text: "When do you need to move in?",
       type: 'timeline',
       responseOptions: ["Immediately", "Within 1 month", "Within 2-3 months", "3+ months", "Flexible"],
       emojiOptions: ["🚀", "📅", "⏰", "🔄"]
     },
     {
-      text: "Budget range?",
+      text: "What's your budget range?",
       type: 'pricing',
       responseOptions: ["Under $1,500", "$1,500-$2,500", "$2,500-$3,500", "$3,500+", "Flexible"],
       emojiOptions: ["💵", "💰", "💳", "🏦"]
     },
     {
-      text: "Top amenities?",
+      text: "Which amenities are most important?",
       type: 'preference',
       responseOptions: ["Parking", "Pet-friendly", "Gym/Fitness", "Pool", "In-unit laundry", "Balcony/Patio"],
       emojiOptions: ["🅿️", "🐕", "🏋️", "🏊", "🧺", "🌿"]
     },
     {
-      text: "Interest in touring?",
+      text: "How interested are you in scheduling a tour?",
       type: 'interest',
       responseOptions: ["Very interested", "Somewhat interested", "Maybe later", "Not interested"],
       emojiOptions: ["😍", "🙂", "🤔", "😐"]
     },
     {
-      text: "Max budget you'd consider?",
+      text: "What's the maximum you'd consider paying?",
       type: 'pricing',
       responseOptions: ["Current budget", "10% higher", "20% higher", "Significantly more", "Can't go higher"],
       emojiOptions: ["💰", "💵", "💳", "🚫"]
     }
   ];
 
-  // Post-tour questions with AI-powered follow-ups
+  // Post-tour questions with contextually relevant emoji options
   const postTourQuestions: QuestionData[] = [
     {
       text: "Rate your tour?",
@@ -87,32 +87,32 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
       emojiOptions: ["😍", "😊", "😐", "😞"]
     },
     {
-      text: "What did you like most?",
+      text: "What did you like about the property?",
       type: 'preference',
-      emojiOptions: ["✨", "🏠", "🌟", "👍"]
+      emojiOptions: ["🚿", "🛏️", "🏠", "📏", "💡", "🌿"]
     },
     {
-      text: "Any concerns?",
+      text: "Any concerns about the unit?",
       type: 'open',
       emojiOptions: ["🤔", "😟", "❓", "💭"]
     },
     {
-      text: "Fair rent for this unit?",
+      text: "Is the price fair for this unit?",
       type: 'pricing',
-      responseOptions: ["As listed", "10% less", "15% less", "20% less", "Would need significant reduction"],
-      emojiOptions: ["💰", "💵", "💳", "🤷"]
+      responseOptions: ["Yes, fair price", "Slightly high", "Too expensive", "Great value", "Need to think about it"],
+      emojiOptions: ["👍", "👎", "🤔", "🤷"]
     },
     {
-      text: "Ideal move-in date?",
+      text: "How's the size for your needs?",
+      type: 'preference',
+      responseOptions: ["Perfect size", "A bit small", "Too small", "Larger than needed", "Just right"],
+      emojiOptions: ["📏", "📐", "🏠", "✅"]
+    },
+    {
+      text: "What's your move-in timeline?",
       type: 'timeline',
       responseOptions: ["Immediately", "Within 2 weeks", "Within 1 month", "1-2 months", "Not ready to commit"],
       emojiOptions: ["🚀", "📅", "⏰", "🤷"]
-    },
-    {
-      text: "Price that would interest you?",
-      type: 'pricing',
-      responseOptions: ["As listed", "$100 less", "$200 less", "$300+ less", "Not price-driven"],
-      emojiOptions: ["💰", "💵", "💳", "🤷"]
     }
   ];
 
@@ -127,16 +127,34 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
       // Add additional questions to reach minimum of 5
       const additionalQuestions: QuestionData[] = [
         {
-          text: "Overall interest level?",
-          type: 'interest',
-          responseOptions: ["Very interested", "Somewhat interested", "Not interested", "Need more time"],
-          emojiOptions: ["😍", "🙂", "😐", "🤔"]
+          text: "How would you rate the kitchen?",
+          type: 'preference',
+          responseOptions: ["Love it", "Good", "Adequate", "Needs updating", "Major concern"],
+          emojiOptions: ["🍳", "🔥", "🍽️", "⭐"]
         },
         {
-          text: "Any price that would work?",
+          text: "What about the bathroom facilities?",
+          type: 'preference',
+          responseOptions: ["Perfect", "Good condition", "Acceptable", "Could be better", "Needs work"],
+          emojiOptions: ["🚿", "🛁", "🚽", "💧"]
+        },
+        {
+          text: "How's the lighting throughout?",
+          type: 'preference',
+          responseOptions: ["Excellent natural light", "Good lighting", "Adequate", "Too dark", "Poor lighting"],
+          emojiOptions: ["💡", "☀️", "🌞", "🔆"]
+        },
+        {
+          text: "Any price that would work for you?",
           type: 'pricing',
           responseOptions: ["Current price fine", "$50 less", "$100 less", "$200+ less", "Price not main factor"],
-          emojiOptions: ["💰", "💵", "💳", "🤷"]
+          emojiOptions: ["👍", "👎", "🤔", "🤷"]
+        },
+        {
+          text: "How's the storage space?",
+          type: 'preference',
+          responseOptions: ["Plenty of storage", "Adequate", "Could use more", "Not enough", "Major issue"],
+          emojiOptions: ["📦", "🗄️", "👕", "📏"]
         }
       ];
       
@@ -159,6 +177,37 @@ export function FeedbackQuestionnaire({ leadId, propertyId, sessionType, onCompl
         emojiOptions: ["🚀", "📅", "⏰", "🔄"]
       });
     }
+
+    // Add property-specific follow-up questions based on context
+    const propertySpecificQuestions: QuestionData[] = [
+      {
+        text: "How's the neighborhood feel?",
+        type: 'preference',
+        responseOptions: ["Love the area", "Good location", "Okay", "Some concerns", "Not ideal"],
+        emojiOptions: ["🏘️", "🌳", "🚶", "🛣️"]
+      },
+      {
+        text: "What about parking availability?",
+        type: 'preference',
+        responseOptions: ["Excellent parking", "Good options", "Limited but okay", "Challenging", "Major issue"],
+        emojiOptions: ["🅿️", "🚗", "🚙", "🔍"]
+      },
+      {
+        text: "How's the noise level?",
+        type: 'preference',
+        responseOptions: ["Very quiet", "Peaceful", "Some noise", "Noisy", "Too loud"],
+        emojiOptions: ["🤫", "😌", "🔊", "📢"]
+      },
+      {
+        text: "Thoughts on the appliances?",
+        type: 'preference',
+        responseOptions: ["Modern and great", "Good condition", "Functional", "Outdated", "Need replacement"],
+        emojiOptions: ["🔥", "❄️", "🧺", "🍽️"]
+      }
+    ];
+
+    // Add some of these questions if we have room
+    followUps.push(...propertySpecificQuestions.slice(0, Math.min(2, 7 - followUps.length)));
 
     return followUps;
   };
