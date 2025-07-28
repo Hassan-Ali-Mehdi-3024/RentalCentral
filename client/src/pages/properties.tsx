@@ -17,7 +17,9 @@ import { z } from "zod";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { InsertProperty } from "@shared/schema";
+import ZillowIntegration from "@/components/zillow-integration";
 
 const propertySchema = z.object({
   name: z.string().min(1, "Property name is required"),
@@ -606,24 +608,38 @@ export default function Properties() {
           </Dialog>
         </div>
 
-        {/* Properties Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProperties.map((property) => (
-            <PropertyCard
-              key={property.id}
-              property={property}
-              leadCount={getLeadCountForProperty(property.id)}
-            />
-          ))}
-        </div>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="properties">My Properties</TabsTrigger>
+            <TabsTrigger value="zillow">Zillow Integration</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="properties" className="space-y-6">
+            {/* Properties Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProperties.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  leadCount={getLeadCountForProperty(property.id)}
+                />
+              ))}
+            </div>
 
-        {filteredProperties.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              {searchTerm ? "No properties found matching your search." : "No properties found."}
-            </p>
-          </div>
-        )}
+            {filteredProperties.length === 0 && !isLoading && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  {searchTerm ? "No properties found matching your search." : "No properties found."}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="zillow">
+            <ZillowIntegration />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

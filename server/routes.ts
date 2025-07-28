@@ -1,6 +1,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { fetchZillowProperties } from "./zillow-integration";
 import { 
   insertPropertySchema, 
   insertLeadSchema,
@@ -1079,6 +1080,97 @@ If you've gathered sufficient feedback, set completed: true.`;
         console.error("Profile update error:", error);
         res.status(500).json({ error: "Failed to update profile" });
       }
+    }
+  });
+
+  // Zillow Integration API Routes
+  app.post("/api/zillow/sync", async (req, res) => {
+    try {
+      const apiKey = process.env.ZILLOW_API_KEY || 'f55f0e551fmsh7d0f78b6fae347ep11d027jsndf2d636b16bf';
+      
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: "Zillow API key not configured. Please set ZILLOW_API_KEY environment variable." 
+        });
+      }
+
+      console.log('Starting Zillow property sync...');
+      
+      const result = await fetchZillowProperties(apiKey, undefined, true, storage);
+      
+      res.json({
+        success: true,
+        message: `Successfully retrieved ${result.properties.length} properties from Zillow`,
+        propertiesCount: result.properties.length,
+        syncedCount: result.syncedCount || 0,
+        savedPath: result.savedPath,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error: any) {
+      console.error('Zillow sync error:', error);
+      res.status(500).json({ 
+        error: "Failed to sync with Zillow", 
+        details: error.message 
+      });
+    }
+  });
+
+  app.get("/api/zillow/test", async (req, res) => {
+    try {
+      const apiKey = process.env.ZILLOW_API_KEY || 'f55f0e551fmsh7d0f78b6fae347ep11d027jsndf2d636b16bf';
+      
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: "Zillow API key not configured" 
+        });
+      }
+
+      // Test connection without syncing to database
+      const result = await fetchZillowProperties(apiKey, undefined, false);
+      
+      res.json({
+        success: true,
+        message: `Connection successful. Found ${result.properties.length} properties`,
+        sampleProperty: result.properties[0] || null,
+        totalProperties: result.properties.length
+      });
+      
+    } catch (error: any) {
+      console.error('Zillow test error:', error);
+      res.status(500).json({ 
+        error: "Failed to connect to Zillow API", 
+        details: error.message 
+      });
+    }
+  });
+
+  app.get("/api/zillow/properties", async (req, res) => {
+    try {
+      const apiKey = process.env.ZILLOW_API_KEY || 'f55f0e551fmsh7d0f78b6fae347ep11d027jsndf2d636b16bf';
+      const agentId = req.query.agentId as string;
+      
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: "Zillow API key not configured" 
+        });
+      }
+
+      const result = await fetchZillowProperties(apiKey, agentId, false);
+      
+      res.json({
+        success: true,
+        properties: result.properties,
+        count: result.properties.length,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error: any) {
+      console.error('Zillow properties fetch error:', error);
+      res.status(500).json({ 
+        error: "Failed to fetch properties from Zillow", 
+        details: error.message 
+      });
     }
   });
 

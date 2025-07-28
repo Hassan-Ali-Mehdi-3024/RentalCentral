@@ -11,6 +11,19 @@ export const properties = pgTable("properties", {
   imageUrl: text("image_url"),
   description: text("description"),
   available: boolean("available").default(true),
+  
+  // Zillow Integration Fields
+  zillowId: varchar("zillow_id", { length: 50 }),
+  zillowUrl: text("zillow_url"),
+  listingStatus: varchar("listing_status", { length: 50 }),
+  bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }),
+  squareFootage: integer("square_footage"),
+  photos: text("photos"), // JSON array of photo URLs
+  amenities: text("amenities"), // JSON array of amenities
+  isAvailable: boolean("is_available").default(true),
+  rentEstimate: decimal("rent_estimate", { precision: 10, scale: 2 }),
+  valueEstimate: decimal("value_estimate", { precision: 12, scale: 2 }),
+  lastSyncedAt: timestamp("last_synced_at"),
 });
 
 export const leads = pgTable("leads", {
